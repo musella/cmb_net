@@ -14,6 +14,8 @@ from keras import losses
 from keras import backend as K
 
 
+batch_size = 1000
+
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--layers", type=int,
@@ -63,7 +65,7 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-name = "l{0}x{1}_d{2:.2f}_{3}_lr{4:.5f}_bn{5}_dn{6}".format(args.layers, args.layersize, args.dropout, args.activation, args.lr, int(args.batchnorm), int(args.do_norm))
+name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.5f}_bn{5}_dn{6}".format(args.layers, args.layersize, args.dropout, args.activation, args.lr, int(args.batchnorm), int(args.do_norm))
 os.makedirs(name)
 logging.basicConfig(
     format='%(asctime)s %(name)s %(message)s',
@@ -79,10 +81,15 @@ X = data["X"]
 logging.info("X={0}".format(X[:5]))
 y = data["y"][:, 2]
 logging.info("y={0}".format(y[:5]))
-y = np.exp(y)
+#y = np.log(y)
+
+cut = np.isfinite(y)
+logging.info("applying cut to be finite, passed {0}/{1}".format(np.sum(cut), y.shape[0]))
+X = X[cut]
+y = y[cut]
 
 logging.info("shapes {0} {1}".format(X.shape, y.shape))
-ybins = np.linspace(np.mean(y)-3*np.std(y), np.mean(y)+3*np.std(y), 1000)
+ybins = np.linspace(np.mean(y) - 6*np.std(y), np.mean(y) + 6*np.std(y), 100)
 c, b = np.histogram(y, bins=ybins)
 ib = np.searchsorted(b, y)
 w = np.ones(X.shape[0])
@@ -104,12 +111,12 @@ if args.do_norm:
 
 for ix in range(X.shape[1]):
     plt.figure()
-    plt.hist(y, bins=ybins)
+    plt.hist(X[:, ix], bins=100)
     plt.savefig("{0}/src_{1}.pdf".format(name, ix), weights=w)
 
 plt.figure()
 plt.hist(y, bins=ybins)
-plt.savefig("name/target_unw.pdf".format(name))
+plt.savefig("{0}/target_unw.pdf".format(name))
 
 ntrain = int(0.8*X.shape[0])
 X_train = X[:ntrain]
@@ -130,7 +137,7 @@ mod.add(keras.layers.InputLayer(input_shape=(X.shape[1], )))
 
 for i in range(args.layers):
     if args.batchnorm:
-    	mod.add(keras.layers.BatchNormalization())
+        mod.add(keras.layers.BatchNormalization())
     mod.add(keras.layers.Dense(args.layersize))
     if args.dropout > 0.0:
         mod.add(keras.layers.Dropout(args.dropout))
@@ -179,9 +186,9 @@ logging_callback = keras.callbacks.LambdaCallback(
     on_epoch_end=lambda epoch, logs: logging.info("epoch_end {0} {1} {2}".format(epoch, logs["loss"], logs["val_loss"])) 
 )
 
-tb = keras.callbacks.TensorBoard(log_dir='./tblogs/{0}'.format(name), histogram_freq=10, write_grads=True, batch_size=10000)
+tb = keras.callbacks.TensorBoard(log_dir='./tblogs/{0}'.format(name), histogram_freq=10, write_grads=True, batch_size=batch_size)
 es = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=args.earlystop, verbose=0, mode='auto')
-ret = mod.fit(X_train, y_train, sample_weight=w_train, batch_size=100000, validation_data=(X_test, y_test, w_test), epochs=args.epochs, callbacks=[es, logging_callback, tb], verbose=2)
+ret = mod.fit(X_train, y_train, sample_weight=w_train, batch_size=batch_size, validation_data=(X_test, y_test, w_test), epochs=args.epochs, callbacks=[es, logging_callback, tb], verbose=1)
 
 plt.figure()
 plt.plot(ret.history["loss"][5:])
@@ -190,11 +197,11 @@ plt.savefig("{0}/loss.pdf".format(name))
 
 import matplotlib.pyplot as plt
 
-y_pred = mod.predict(X_train[:50000], batch_size=1000)
-y_pred_test = mod.predict(X_test[:50000], batch_size=1000)
+y_pred_train = mod.predict(X_train[:50000], batch_size=batch_size)
+y_pred_test = mod.predict(X_test[:50000], batch_size=batch_size)
 
 plt.figure()
-plt.scatter(y_train[:10000], y_pred[:10000], marker=".", alpha=0.2)
+plt.scatter(y_train[:10000], y_pred_train[:10000], marker=".", alpha=0.2)
 plt.savefig("{0}/train.pdf".format(name))
 
 plt.figure()
