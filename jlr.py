@@ -69,8 +69,17 @@ parser.add_argument(
     help="Reweight target distribution"
 )
 
+parser.add_argument(
+    "--target",
+    action="store",
+    default="jlr"
+    choices=["jlr", "fake"],
+    type="str"
+    help="Target type"
+)
+
 args = parser.parse_args()
-name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.5f}_bn{5}_dn{6}_w{7}".format(args.layers, args.layersize, args.dropout, args.activation, args.lr, int(args.batchnorm), int(args.do_norm), int(args.do_weight))
+name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.5f}_bn{5}_dn{6}_w{7}_{8}".format(args.layers, args.layersize, args.dropout, args.activation, args.lr, int(args.batchnorm), int(args.do_norm), int(args.do_weight), args.target)
 os.makedirs(name)
 logging.basicConfig(
     format='%(asctime)s %(name)s %(message)s',
@@ -84,7 +93,11 @@ inf = open("jlr_data_full.npz", "rb")
 data = np.load(inf)
 X = data["X"]
 logging.info("X={0}".format(X[:5]))
-y = data["y"][:, 2]
+
+if args.target == "jlr":
+    y = data["y"][:, 2]
+elif args.target == "fake":
+    y = X[:, 0] + X[:, 4] + X[:, 8] + X[:, 12]
 logging.info("y={0}".format(y[:5]))
 #y = np.log(y)
 
