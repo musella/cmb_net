@@ -13,8 +13,8 @@ import logging
 from keras import losses
 from keras import backend as K
 
-
-batch_size = 1000
+batch_size = 10000
+log_r_clip_value = 10.0
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -63,9 +63,14 @@ parser.add_argument(
     action="store_true",
     help="Normalize and standardize inputs"
 )
+parser.add_argument(
+    "--do_weight",
+    action="store_true",
+    help="Reweight target distribution"
+)
 
 args = parser.parse_args()
-name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.5f}_bn{5}_dn{6}".format(args.layers, args.layersize, args.dropout, args.activation, args.lr, int(args.batchnorm), int(args.do_norm))
+name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.5f}_bn{5}_dn{6}_w{7}".format(args.layers, args.layersize, args.dropout, args.activation, args.lr, int(args.batchnorm), int(args.do_norm), int(args.do_weight))
 os.makedirs(name)
 logging.basicConfig(
     format='%(asctime)s %(name)s %(message)s',
@@ -75,7 +80,7 @@ logging.basicConfig(
 )
 print("name " + name)
 
-inf = open("jlr_data.npz", "rb")
+inf = open("jlr_data_full.npz", "rb")
 data = np.load(inf)
 X = data["X"]
 logging.info("X={0}".format(X[:5]))
@@ -92,10 +97,12 @@ logging.info("shapes {0} {1}".format(X.shape, y.shape))
 ybins = np.linspace(np.mean(y) - 6*np.std(y), np.mean(y) + 6*np.std(y), 100)
 c, b = np.histogram(y, bins=ybins)
 ib = np.searchsorted(b, y)
+
 w = np.ones(X.shape[0])
-#w = np.array([X.shape[0]/c[_ib] if _ib < c.shape[0] else 0.0 for _ib in ib])
-#w[np.isinf(w)] = 0.0
-#w[np.isnan(w)] = 0.0
+if args.do_weight:
+    w = np.array([X.shape[0]/c[_ib] if _ib < c.shape[0] else 0.0 for _ib in ib])
+    w[np.isinf(w)] = 0.0
+    w[np.isnan(w)] = 0.0
 
 # In[115]:
 if args.do_norm:
@@ -164,11 +171,10 @@ for i in range(args.layers):
 #elif args.activation == "tanh":
 #    mod.add(keras.layers.Activation("tanh"))
 mod.add(keras.layers.Dense(1, activation="linear"))
-#mod.add(keras.layers.Lambda(lambda x: K.exp(x)))
+mod.add(keras.layers.Lambda(lambda x,log_r_clip_value=log_r_clip_value: K.clip(x, -log_r_clip_value, +log_r_clip_value)))
 
 mod.summary()
 
-log_r_clip_value = 10.0
 def loss_function_ratio_regression(y_true, y_pred):
     r_loss = losses.mean_squared_error(
         K.exp(K.clip(y_true, -log_r_clip_value, log_r_clip_value)),
