@@ -19,6 +19,11 @@ log_r_clip_value = 10.0
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
+    "--input", type=str,
+    default="jlr_data.npz",
+    help="Input file",
+)
+parser.add_argument(
     "--layers", type=int,
     default=2, action="store",
     help="Number of intermediate layers"
@@ -69,6 +74,11 @@ parser.add_argument(
     action="store_true",
     help="Reweight target distribution"
 )
+parser.add_argument(
+    "--do_logtarget",
+    action="store_true",
+    help="Take log of target"
+)
 
 parser.add_argument(
     "--target",
@@ -90,18 +100,18 @@ logging.basicConfig(
 )
 print("name " + name)
 
-inf = open("jlr_data.npz", "rb")
+inf = open(args.input, "rb")
 data = np.load(inf)
 X = data["X"]
 logging.info("X={0}".format(X[:5]))
 
 if args.target == "jlr":
-    y = data["y"][:, 2]
+    y = data["y"][:, -1]
 elif args.target == "fake":
     y = X[:, 0] + X[:, 4] + X[:, 8] + X[:, 12]
+if args.do_logtarget:
     y = np.log(y)
 logging.info("y={0}".format(y[:5]))
-#y = np.log(y)
 
 cut = np.isfinite(y)
 logging.info("applying cut to be finite, passed {0}/{1}".format(np.sum(cut), y.shape[0]))

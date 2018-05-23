@@ -14,16 +14,26 @@ parser.add_argument(
     default=10, action="store",
     help="max files to process"
 )
+parser.add_argument(
+    "--type", type=str,
+    default="reco", choices=["reco", "parton"],
+    help="type of input"
+)
 args = parser.parse_args()
 
 Xs = []
 ys = []
-for fn in glob.glob("samples/parton/*.csv")[:args.maxfiles]:
+for fn in glob.glob("samples/{0}/*.csv".format(args.type))[:args.maxfiles]:
     data = pd.read_csv(fn, delim_whitespace=True)
     cols = data.columns
-    feature_cols = cols[:-3]
+
+    if args.type == "parton":
+        feature_cols = cols[:-3]
+        target_cols = cols[-3:]
+    elif args.type == "reco":
+        feature_cols = cols[:-1]
+        target_cols = cols[-1:]
     print feature_cols
-    target_cols = cols[-3:]
     print target_cols
     X = data[feature_cols].as_matrix().astype("float32")
     y = data[target_cols].as_matrix().astype("float32")
