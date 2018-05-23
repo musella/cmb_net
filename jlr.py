@@ -12,6 +12,7 @@ import logging
 
 from keras import losses
 from keras import backend as K
+from matplotlib.colors import LogNorm
 
 batch_size = 10000
 log_r_clip_value = 10.0
@@ -72,9 +73,9 @@ parser.add_argument(
 parser.add_argument(
     "--target",
     action="store",
-    default="jlr"
+    default="jlr",
     choices=["jlr", "fake"],
-    type="str"
+    type=str,
     help="Target type"
 )
 
@@ -89,7 +90,7 @@ logging.basicConfig(
 )
 print("name " + name)
 
-inf = open("jlr_data_full.npz", "rb")
+inf = open("jlr_data.npz", "rb")
 data = np.load(inf)
 X = data["X"]
 logging.info("X={0}".format(X[:5]))
@@ -98,6 +99,7 @@ if args.target == "jlr":
     y = data["y"][:, 2]
 elif args.target == "fake":
     y = X[:, 0] + X[:, 4] + X[:, 8] + X[:, 12]
+    y = np.log(y)
 logging.info("y={0}".format(y[:5]))
 #y = np.log(y)
 
@@ -133,6 +135,10 @@ for ix in range(X.shape[1]):
     plt.figure()
     plt.hist(X[:, ix], bins=100)
     plt.savefig("{0}/src_{1}.pdf".format(name, ix), weights=w)
+    
+    plt.figure()
+    plt.hexbin(X[:, ix], y[:], bins=100, norm=LogNorm(1, X.shape[0]))
+    plt.savefig("{0}/src_tgt_{1}.pdf".format(name, ix), weights=w)
 
 plt.figure()
 plt.hist(y, bins=ybins)
@@ -221,9 +227,13 @@ y_pred_test = mod.predict(X_test[:50000], batch_size=batch_size)
 
 plt.figure()
 plt.scatter(y_train[:10000], y_pred_train[:10000], marker=".", alpha=0.2)
+plt.xlabel("true {0}".format(args.target))
+plt.ylabel("pred {0}".format(args.target))
 plt.savefig("{0}/train.pdf".format(name))
 
 plt.figure()
 plt.scatter(y_test[:10000], y_pred_test[:10000], marker=".", alpha=0.2)
+plt.xlabel("true {0}".format(args.target))
+plt.ylabel("pred {0}".format(args.target))
 plt.savefig("{0}/test.pdf".format(name))
 
