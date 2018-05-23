@@ -79,6 +79,11 @@ parser.add_argument(
     action="store_true",
     help="Take log of target"
 )
+parser.add_argument(
+    "--do_varplots",
+    action="store_true",
+    help="Do plots of input variables"
+)
 
 parser.add_argument(
     "--target",
@@ -141,15 +146,16 @@ if args.do_norm:
     mean, std = np.mean(y), np.std(y)
     y  = (y-mean)/std
 
-for ix in range(X.shape[1]):
-    plt.figure()
-    plt.hist(X[:, ix], bins=100)
-    plt.savefig("{0}/src_{1}.pdf".format(name, ix), weights=w)
+if args.do_varplots:
+    for ix in range(X.shape[1]):
+        plt.figure()
+        plt.hist(X[:, ix], bins=100)
+        plt.savefig("{0}/src_{1}.pdf".format(name, ix), weights=w)
+        
+        plt.figure()
+        plt.hexbin(X[:, ix], y[:], bins=100, norm=LogNorm(1, X.shape[0]))
+        plt.savefig("{0}/src_tgt_{1}.pdf".format(name, ix), weights=w)
     
-    plt.figure()
-    plt.hexbin(X[:, ix], y[:], bins=100, norm=LogNorm(1, X.shape[0]))
-    plt.savefig("{0}/src_tgt_{1}.pdf".format(name, ix), weights=w)
-
 plt.figure()
 plt.hist(y, bins=ybins)
 plt.savefig("{0}/target_unw.pdf".format(name))
