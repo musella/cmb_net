@@ -25,17 +25,17 @@ parser.add_argument(
 )
 parser.add_argument(
     "--layers", type=int,
-    default=2, action="store",
+    default=3, action="store",
     help="Number of intermediate layers"
 )
 parser.add_argument(
     "--layersize", type=int,
-    default=256, action="store",
+    default=128, action="store",
     help="Layer size"
 )
 parser.add_argument(
     "--activation", type=str,
-    default="relu", action="store",
+    default="tanh", action="store",
     choices=["relu", "leakyrelu", "prelu", "tanh", "elu"],
     help="Activation function"
 )
@@ -53,6 +53,16 @@ parser.add_argument(
     "--epochs", type=int,
     default=200, action="store",
     help="Number of epochs"
+)
+parser.add_argument(
+    "--ntrain", type=int,
+    default=0, action="store",
+    help="number of training events"
+)
+parser.add_argument(
+    "--ntest", type=int,
+    default=0, action="store",
+    help="number of testing events"
 )
 parser.add_argument(
     "--earlystop", type=int,
@@ -95,7 +105,13 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.5f}_bn{5}_dn{6}_w{7}_{8}".format(args.layers, args.layersize, args.dropout, args.activation, args.lr, int(args.batchnorm), int(args.do_norm), int(args.do_weight), args.target)
+name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.5f}_bn{5}_dn{6}_w{7}_{8}_{9}".format(
+    args.layers, args.layersize,
+    args.dropout, args.activation,
+    args.lr, int(args.batchnorm),
+    int(args.do_norm), int(args.do_weight),
+    args.target, os.path.basename(args.input)
+)
 os.makedirs(name)
 logging.basicConfig(
     format='%(asctime)s %(name)s %(message)s',
@@ -160,14 +176,23 @@ plt.figure()
 plt.hist(y, bins=ybins)
 plt.savefig("{0}/target_unw.pdf".format(name))
 
-ntrain = int(0.8*X.shape[0])
-X_train = X[:ntrain]
-y_train = y[:ntrain]
-w_train = w[:ntrain]
-
-X_test = X[ntrain:]
-y_test = y[ntrain:]
-w_test = w[ntrain:]
+if args.ntrain == 0 and args.ntest == 0:
+    ntrain = int(0.8*X.shape[0])
+    X_train = X[:ntrain]
+    y_train = y[:ntrain]
+    w_train = w[:ntrain]
+    
+    X_test = X[ntrain:]
+    y_test = y[ntrain:]
+    w_test = w[ntrain:]
+else:
+    X_train = X[:args.ntrain]
+    y_train = y[:args.ntrain]
+    w_train = w[:args.ntrain]
+    
+    X_test = X[args.ntrain:args.ntrain+args.ntest]
+    y_test = y[args.ntrain:args.ntrain+args.ntest]
+    w_test = w[args.ntrain:args.ntrain+args.ntest]
 
 plt.figure()
 plt.hist(y_train, bins=ybins, weights=w_train)

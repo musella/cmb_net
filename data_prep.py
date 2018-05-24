@@ -31,8 +31,8 @@ for fn in glob.glob("samples/{0}/*.csv".format(args.type))[:args.maxfiles]:
         feature_cols = cols[:-3]
         target_cols = cols[-3:]
     elif args.type == "reco":
-        feature_cols = cols[:-1]
-        target_cols = cols[-1:]
+        feature_cols = cols[:-3]
+        target_cols = cols[-3:]
     print feature_cols
     print target_cols
     X = data[feature_cols].as_matrix().astype("float32")
