@@ -155,11 +155,11 @@ if args.do_weight:
 if args.do_norm:
     means = np.mean(X, axis=0)
     stds = np.std(X, axis=0)
-    logging.info("means={0}".format(means)) 
-    logging.info("stds={0}".format(stds)) 
+    logging.info("means={0}".format(means))
+    logging.info("stds={0}".format(stds))
     for i in range(X.shape[1]):
         X[:, i] = (X[:, i] - means[i])/stds[i]
-    
+    X[~np.isfinite(X)] = 0.0
     mean, std = np.mean(y), np.std(y)
     y  = (y-mean)/std
 
@@ -237,7 +237,7 @@ mod.add(keras.layers.Lambda(lambda x,log_r_clip_value=log_r_clip_value: K.clip(x
 mod.summary()
 
 def loss_function_ratio_regression(y_true, y_pred):
-    r_loss = losses.mean_squared_error(
+    r_loss = 1000.0*losses.mean_squared_error(
         K.exp(K.clip(y_true, -log_r_clip_value, log_r_clip_value)),
         K.exp(K.clip(y_pred, -log_r_clip_value, log_r_clip_value)))
     return r_loss

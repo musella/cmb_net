@@ -15,6 +15,11 @@ parser.add_argument(
     help="max files to process"
 )
 parser.add_argument(
+    "--cut", type=str,
+    default="1", action="store",
+    help="cut to apply"
+)
+parser.add_argument(
     "--type", type=str,
     default="reco", choices=["reco", "parton"],
     help="type of input"
@@ -27,6 +32,9 @@ for fn in glob.glob("samples/{0}/*.csv".format(args.type))[:args.maxfiles]:
     data = pd.read_csv(fn, delim_whitespace=True)
     cols = data.columns
 
+    print "precut", data.shape
+    data = data[data.eval(args.cut)]
+    print "postcut", data.shape
     if args.type == "parton":
         feature_cols = cols[:-3]
         target_cols = cols[-3:]
