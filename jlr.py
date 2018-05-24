@@ -253,9 +253,9 @@ logging_callback = keras.callbacks.LambdaCallback(
     on_epoch_end=lambda epoch, logs: logging.info("epoch_end {0} {1} {2}".format(epoch, logs["loss"], logs["val_loss"])) 
 )
 
-tb = keras.callbacks.TensorBoard(log_dir='./{0}/tb'.format(name), histogram_freq=10, write_grads=True, batch_size=batch_size)
+#tb = keras.callbacks.TensorBoard(log_dir='./{0}/tb'.format(name), histogram_freq=10, write_grads=True, batch_size=batch_size)
 es = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=args.earlystop, verbose=0, mode='auto')
-ret = mod.fit(X_train, y_train, sample_weight=w_train, batch_size=batch_size, validation_data=(X_test, y_test, w_test), epochs=args.epochs, callbacks=[es, logging_callback, tb], verbose=1)
+ret = mod.fit(X_train, y_train, sample_weight=w_train, batch_size=batch_size, validation_data=(X_test, y_test, w_test), epochs=args.epochs, callbacks=[es, logging_callback], verbose=1)
 
 plt.figure()
 plt.plot(ret.history["loss"][5:])
