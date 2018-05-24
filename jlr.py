@@ -105,12 +105,13 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.5f}_bn{5}_dn{6}_w{7}_{8}_{9}".format(
+name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.5f}_bn{5}_dn{6}_w{7}_{8}_{9}_{10}_{11}".format(
     args.layers, args.layersize,
     args.dropout, args.activation,
     args.lr, int(args.batchnorm),
     int(args.do_norm), int(args.do_weight),
-    args.target, os.path.basename(args.input)
+    args.target, os.path.basename(args.input),
+    args.ntrain, args.ntest
 )
 os.makedirs(name)
 logging.basicConfig(
