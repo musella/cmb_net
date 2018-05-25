@@ -14,7 +14,7 @@ from keras import losses
 from keras import backend as K
 from matplotlib.colors import LogNorm
 
-batch_size = 1000
+batch_size = 100
 log_r_clip_value = 10.0
 
 parser = argparse.ArgumentParser()
@@ -94,6 +94,11 @@ parser.add_argument(
     action="store_true",
     help="Do plots of input variables"
 )
+parser.add_argument(
+    "--do_tensorboard",
+    action="store_true",
+    help="Do Tensorboard"
+)
 
 parser.add_argument(
     "--target",
@@ -160,8 +165,8 @@ if args.do_norm:
     for i in range(X.shape[1]):
         X[:, i] = (X[:, i] - means[i])/stds[i]
     X[~np.isfinite(X)] = 0.0
-    mean, std = np.mean(y), np.std(y)
-    y  = (y-mean)/std
+#    mean, std = np.mean(y), np.std(y)
+#    y  = (y-mean)/std
 
 if args.do_varplots:
     for ix in range(X.shape[1]):
@@ -208,7 +213,10 @@ for i in range(args.layers):
         mod.add(keras.layers.BatchNormalization())
     mod.add(keras.layers.Dense(args.layersize))
     if args.dropout > 0.0:
-        mod.add(keras.layers.Dropout(args.dropout))
+        dropout_amount = args.dropout
+        if i == 0:
+            dropout_amount = dropout_amount / 2.0
+        mod.add(keras.layers.Dropout(dropout_amount))
     if args.activation == "relu":
         mod.add(keras.layers.Activation("relu"))
     elif args.activation == "leakyrelu":
@@ -220,17 +228,6 @@ for i in range(args.layers):
     elif args.activation == "tanh":
         mod.add(keras.layers.Activation("tanh"))
     
-#mod.add(keras.layers.Dense(512))
-#if args.activation == "relu":
-#    mod.add(keras.layers.Activation("relu"))
-#elif args.activation == "leakyrelu":
-#    mod.add(keras.layers.LeakyReLU(alpha=0.1))
-#elif args.activation == "prelu":
-#    mod.add(keras.layers.PReLU())
-#elif args.activation == "elu":
-#    mod.add(keras.layers.ELU())
-#elif args.activation == "tanh":
-#    mod.add(keras.layers.Activation("tanh"))
 mod.add(keras.layers.Dense(1, activation="linear"))
 mod.add(keras.layers.Lambda(lambda x,log_r_clip_value=log_r_clip_value: K.clip(x, -log_r_clip_value, +log_r_clip_value)))
 
@@ -253,9 +250,13 @@ logging_callback = keras.callbacks.LambdaCallback(
     on_epoch_end=lambda epoch, logs: logging.info("epoch_end {0} {1} {2}".format(epoch, logs["loss"], logs["val_loss"])) 
 )
 
-#tb = keras.callbacks.TensorBoard(log_dir='./{0}/tb'.format(name), histogram_freq=10, write_grads=True, batch_size=batch_size)
+callbacks = []
+if args.do_tensorboard:
+    tb = keras.callbacks.TensorBoard(log_dir='./{0}/tb'.format(name), histogram_freq=1, write_grads=True, batch_size=batch_size)
+    callbacks += [tb]
 es = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=args.earlystop, verbose=0, mode='auto')
-ret = mod.fit(X_train, y_train, sample_weight=w_train, batch_size=batch_size, validation_data=(X_test, y_test, w_test), epochs=args.epochs, callbacks=[es, logging_callback], verbose=1)
+callbacks += [es, logging_callback]
+ret = mod.fit(X_train, y_train, sample_weight=w_train, batch_size=batch_size, validation_data=(X_test, y_test, w_test), epochs=args.epochs, callbacks=callbacks, verbose=1)
 
 plt.figure()
 plt.plot(ret.history["loss"][5:])
