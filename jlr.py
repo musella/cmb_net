@@ -20,7 +20,7 @@ log_r_clip_value = 10.0
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--input", type=str,
-    default="jlr_data.npz",
+    default="jlr_data_reco.npz",
     help="Input file",
 )
 parser.add_argument(
@@ -71,12 +71,12 @@ parser.add_argument(
 )
 parser.add_argument(
     "--clipnorm", type=float,
-    default=2.0, action="store",
+    default=4.0, action="store",
     help="Clip normalization"
 )
 parser.add_argument(
     "--layer_reg", type=float,
-    default=0.01, action="store",
+    default=0.00, action="store",
     help="Layer regularization"
 )
 parser.add_argument(
@@ -224,9 +224,9 @@ for i in range(args.layers):
     if args.batchnorm:
         mod.add(keras.layers.BatchNormalization())
     mod.add(keras.layers.Dense(layersize,
-        kernel_regularizer=keras.regularizers.l2(args.layer_reg),
-        bias_regularizer=keras.regularizers.l2(args.layer_reg))
-    )
+        #kernel_regularizer=keras.regularizers.l2(args.layer_reg),
+        #bias_regularizer=keras.regularizers.l2(args.layer_reg))
+    ))
     if args.dropout > 0.0:
         dropout_amount = args.dropout
         if i == 0:
@@ -243,7 +243,7 @@ for i in range(args.layers):
     elif args.activation == "tanh":
         mod.add(keras.layers.Activation("tanh"))
     
-mod.add(keras.layers.Dense(1, activation="linear", bias_initializer="zeros"))
+mod.add(keras.layers.Dense(1, activation="linear", bias_initializer="glorot_uniform", kernel_constraint=keras.constraints.max_norm(0.5)))
 mod.add(keras.layers.Lambda(lambda x,log_r_clip_value=log_r_clip_value: K.clip(x, -log_r_clip_value, +log_r_clip_value)))
 
 mod.summary()
@@ -254,7 +254,7 @@ def loss_function_ratio_regression(y_true, y_pred):
         K.exp(K.clip(y_pred, -log_r_clip_value, log_r_clip_value)))
     return r_loss
 
-opt = keras.optimizers.Adam(lr=args.lr, clipvalue=args.clipnorm)
+opt = keras.optimizers.Adam(lr=args.lr, clipnorm=args.clipnorm)
 mod.compile(loss=loss_function_ratio_regression, optimizer=opt)
 
 def on_epoch_end(epoch, logs):
@@ -269,13 +269,17 @@ def on_epoch_end(epoch, logs):
                 weight_mat_flat = weight_mat.flatten()
                 stds += [np.std(weight_mat_flat)]
                 means += [np.mean(weight_mat_flat)]
-        logging.info("epoch_weight {0} {1} {2} {3}".format(epoch, layer.name, means, stds))
+                #if "dense_4" in layer.name:
+                #    print(weight_mat)
+        logging.info("epoch_weight {0} {1} means={2} stds={3}".format(epoch, layer.name, means, stds))
 
     weights = mod.trainable_weights
     gradients = K.gradients(mod.output, weights)
     for grad in gradients:
-        gradvals = grad.eval(session=K.get_session(), feed_dict={mod.input: X_train[:10000]}).flatten()/10000.0
-        logging.info("epoch_grad {0} {1} {2} {3}".format(epoch, grad.name, np.mean(gradvals.flatten()), np.std(gradvals.flatten())))
+        gradvals = grad.eval(session=K.get_session(), feed_dict={mod.input: X_train[:1000]}).flatten()/1000.0
+        #if "dense_4" in grad.name:
+        #    print(gradvals)
+        logging.info("epoch_grad {0} {1} means={2} stds={3}".format(epoch, grad.name, np.mean(gradvals.flatten()), np.std(gradvals.flatten())))
     logging.info("epoch_end {0} {1} {2}".format(epoch, logs["loss"], logs["val_loss"]))
 
 logging_callback = keras.callbacks.LambdaCallback(
