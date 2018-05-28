@@ -242,12 +242,23 @@ def loss_function_ratio_regression(y_true, y_pred):
 opt = keras.optimizers.Adam(lr=args.lr)
 mod.compile(loss=loss_function_ratio_regression, optimizer=opt)
 
+def on_epoch_end(epoch, logs):
 
-# In[ ]:
+    #get layer weight statistics
+    for layer in mod.layers:
+        weights = layer.get_weights()
+        means = []
+        stds = []
+        if len(weights)>0:
+            for weight_mat in weights:
+                weight_mat_flat = weight_mat.flatten()
+                stds += [np.std(weight_mat_flat)]
+                means += [np.mean(weight_mat_flat)]
+        logging.info("epoch_weight {0} {1} {2} {3}".format(epoch, layer.name, means, stds))
+    logging.info("epoch_end {0} {1} {2}".format(epoch, logs["loss"], logs["val_loss"]))
 
-import json
 logging_callback = keras.callbacks.LambdaCallback(
-    on_epoch_end=lambda epoch, logs: logging.info("epoch_end {0} {1} {2}".format(epoch, logs["loss"], logs["val_loss"])) 
+    on_epoch_end=on_epoch_end
 )
 
 callbacks = []
