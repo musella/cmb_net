@@ -273,17 +273,17 @@ def on_epoch_end(epoch, logs):
                 #    print(weight_mat)
         logging.info("epoch_weight {0} {1} means={2} stds={3}".format(epoch, layer.name, means, stds))
 
-    weights = mod.trainable_weights
-    gradients = K.gradients(mod.total_loss, weights)
-    for grad in gradients:
-        gradvals = grad.eval(session=K.get_session(), feed_dict={
-            mod.input: X_train[:1000],
-            mod.sample_weights[0]: w_train[:1000],
-            mod.targets[0]: y_train[:1000].reshape(1000,1)
-        }).flatten()
-        #if "dense_4" in grad.name:
-        #    print(gradvals)
-        logging.info("epoch_grad {0} {1} means={2} stds={3}".format(epoch, grad.name, np.mean(gradvals.flatten()), np.std(gradvals.flatten())))
+    #weights = mod.trainable_weights
+    #gradients = K.gradients(mod.total_loss, weights)
+    #for grad in gradients:
+    #    gradvals = grad.eval(session=K.get_session(), feed_dict={
+    #        mod.input: X_train[:1000],
+    #        mod.sample_weights[0]: w_train[:1000],
+    #        mod.targets[0]: y_train[:1000].reshape(1000,1)
+    #    }).flatten()
+    #    #if "dense_4" in grad.name:
+    #    #    print(gradvals)
+    #    logging.info("epoch_grad {0} {1} means={2} stds={3}".format(epoch, grad.name, np.mean(gradvals.flatten()), np.std(gradvals.flatten())))
     logging.info("epoch_end {0} {1} {2}".format(epoch, logs["loss"], logs["val_loss"]))
 
 logging_callback = keras.callbacks.LambdaCallback(
