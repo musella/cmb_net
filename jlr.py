@@ -14,7 +14,7 @@ from keras import losses
 from keras import backend as K
 from matplotlib.colors import LogNorm
 
-batch_size = 1000
+batch_size = 10000
 log_r_clip_value = 10.0
 
 parser = argparse.ArgumentParser()
@@ -220,9 +220,10 @@ mod = keras.models.Sequential()
 mod.add(keras.layers.InputLayer(input_shape=(X.shape[1], )))
 
 for i in range(args.layers):
+    layersize = args.layersize / pow(2, i)
     if args.batchnorm:
         mod.add(keras.layers.BatchNormalization())
-    mod.add(keras.layers.Dense(args.layersize,
+    mod.add(keras.layers.Dense(layersize,
         kernel_regularizer=keras.regularizers.l2(args.layer_reg),
         bias_regularizer=keras.regularizers.l2(args.layer_reg))
     )
@@ -242,7 +243,7 @@ for i in range(args.layers):
     elif args.activation == "tanh":
         mod.add(keras.layers.Activation("tanh"))
     
-mod.add(keras.layers.Dense(1, activation="linear"))
+mod.add(keras.layers.Dense(1, activation="linear", bias_initializer="zeros"))
 mod.add(keras.layers.Lambda(lambda x,log_r_clip_value=log_r_clip_value: K.clip(x, -log_r_clip_value, +log_r_clip_value)))
 
 mod.summary()
@@ -253,7 +254,7 @@ def loss_function_ratio_regression(y_true, y_pred):
         K.exp(K.clip(y_pred, -log_r_clip_value, log_r_clip_value)))
     return r_loss
 
-opt = keras.optimizers.Adam(lr=args.lr, clipnorm=args.clipnorm)
+opt = keras.optimizers.Adam(lr=args.lr, clipvalue=args.clipnorm)
 mod.compile(loss=loss_function_ratio_regression, optimizer=opt)
 
 def on_epoch_end(epoch, logs):
@@ -269,6 +270,12 @@ def on_epoch_end(epoch, logs):
                 stds += [np.std(weight_mat_flat)]
                 means += [np.mean(weight_mat_flat)]
         logging.info("epoch_weight {0} {1} {2} {3}".format(epoch, layer.name, means, stds))
+
+    weights = mod.trainable_weights
+    gradients = K.gradients(mod.output, weights)
+    for grad in gradients:
+        gradvals = grad.eval(session=K.get_session(), feed_dict={mod.input: X_train[:10000]}).flatten()/10000.0
+        logging.info("epoch_grad {0} {1} {2} {3}".format(epoch, grad.name, np.mean(gradvals.flatten()), np.std(gradvals.flatten())))
     logging.info("epoch_end {0} {1} {2}".format(epoch, logs["loss"], logs["val_loss"]))
 
 logging_callback = keras.callbacks.LambdaCallback(
