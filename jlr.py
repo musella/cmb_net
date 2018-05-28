@@ -220,7 +220,7 @@ mod = keras.models.Sequential()
 mod.add(keras.layers.InputLayer(input_shape=(X.shape[1], )))
 
 for i in range(args.layers):
-    layersize = args.layersize / pow(2, i)
+    layersize = int(args.layersize / pow(2, i))
     if args.batchnorm:
         mod.add(keras.layers.BatchNormalization())
     mod.add(keras.layers.Dense(layersize,
