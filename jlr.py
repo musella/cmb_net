@@ -211,7 +211,10 @@ mod.add(keras.layers.InputLayer(input_shape=(X.shape[1], )))
 for i in range(args.layers):
     if args.batchnorm:
         mod.add(keras.layers.BatchNormalization())
-    mod.add(keras.layers.Dense(args.layersize, kernel_regularizer=keras.regularizers.l2(0.01), bias_regularizer=keras.regularizers.l2(0.01)))
+    mod.add(keras.layers.Dense(args.layersize,
+        kernel_regularizer=keras.regularizers.l2(0.01),
+        bias_regularizer=keras.regularizers.l2(0.01))
+    )
     if args.dropout > 0.0:
         dropout_amount = args.dropout
         if i == 0:
