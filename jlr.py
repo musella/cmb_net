@@ -14,7 +14,7 @@ from keras import losses
 from keras import backend as K
 from matplotlib.colors import LogNorm
 
-batch_size = 100
+batch_size = 1000
 log_r_clip_value = 10.0
 
 parser = argparse.ArgumentParser()
@@ -211,7 +211,7 @@ mod.add(keras.layers.InputLayer(input_shape=(X.shape[1], )))
 for i in range(args.layers):
     if args.batchnorm:
         mod.add(keras.layers.BatchNormalization())
-    mod.add(keras.layers.Dense(args.layersize))
+    mod.add(keras.layers.Dense(args.layersize, kernel_regularizer=keras.regularizers.l2(0.01), bias_regularizer=keras.regularizers.l2(0.01)))
     if args.dropout > 0.0:
         dropout_amount = args.dropout
         if i == 0:
@@ -239,7 +239,7 @@ def loss_function_ratio_regression(y_true, y_pred):
         K.exp(K.clip(y_pred, -log_r_clip_value, log_r_clip_value)))
     return r_loss
 
-opt = keras.optimizers.Adam(lr=args.lr)
+opt = keras.optimizers.Adam(lr=args.lr, clipnorm=2.)
 mod.compile(loss=loss_function_ratio_regression, optimizer=opt)
 
 
