@@ -16,6 +16,8 @@ from matplotlib.colors import LogNorm
 
 batch_size = 1000
 log_r_clip_value = 10.0
+clipnorm = 4.0
+layer_reg = 0.0
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -110,7 +112,7 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.5f}_bn{5}_dn{6}_w{7}_{8}_{9}_{10}_{11}".format(
+name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.7f}_bn{5}_dn{6}_w{7}_{8}_{9}_{10}_{11}".format(
     args.layers, args.layersize,
     args.dropout, args.activation,
     args.lr, int(args.batchnorm),
@@ -212,8 +214,8 @@ for i in range(args.layers):
     if args.batchnorm:
         mod.add(keras.layers.BatchNormalization())
     mod.add(keras.layers.Dense(args.layersize,
-        kernel_regularizer=keras.regularizers.l2(0.01),
-        bias_regularizer=keras.regularizers.l2(0.01))
+        kernel_regularizer=keras.regularizers.l2(layer_reg),
+        bias_regularizer=keras.regularizers.l2(layer_reg))
     )
     if args.dropout > 0.0:
         dropout_amount = args.dropout
@@ -242,7 +244,7 @@ def loss_function_ratio_regression(y_true, y_pred):
         K.exp(K.clip(y_pred, -log_r_clip_value, log_r_clip_value)))
     return r_loss
 
-opt = keras.optimizers.Adam(lr=args.lr, clipnorm=2.)
+opt = keras.optimizers.Adam(lr=args.lr, clipnorm=clipnorm)
 mod.compile(loss=loss_function_ratio_regression, optimizer=opt)
 
 def on_epoch_end(epoch, logs):

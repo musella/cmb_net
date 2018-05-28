@@ -2,7 +2,7 @@
 #SBATCH --job-name=jlr_train
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=joosep.pata@cern.ch
-#SBATCH --time=02:00:00
+#SBATCH --time=10:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-core=1
 #SBATCH --ntasks-per-node=1
