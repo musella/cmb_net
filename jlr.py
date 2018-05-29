@@ -28,6 +28,11 @@ parser.add_argument(
     help="Number of intermediate layers"
 )
 parser.add_argument(
+    "--seed", type=int,
+    default=1, action="store",
+    help="Number of intermediate layers"
+)
+parser.add_argument(
     "--batch_size", type=int,
     default=10000, action="store",
     help="Batch size"
@@ -124,7 +129,13 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.7f}_bn{5}_dn{6}_w{7}_{8}_{9}_{10}_{11}_cn{12:.2f}_reg{13:.2f}_b{14}".format(
+
+from numpy.random import seed
+seed(args.seed)
+from tensorflow import set_random_seed
+set_random_seed(args.seed)
+
+name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.7f}_bn{5}_dn{6}_w{7}_{8}_{9}_{10}_{11}_cn{12:.2f}_reg{13:.2f}_b{14}_s{15}".format(
     args.layers, args.layersize,
     args.dropout, args.activation,
     args.lr, int(args.batchnorm),
@@ -132,7 +143,8 @@ name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.7f}_bn{5}_dn{6}_w{7}_{8}_{9}_{10}_{11}_cn
     args.target, os.path.basename(args.input),
     args.ntrain, args.ntest,
     args.clipnorm, args.layer_reg,
-    args.batch_size
+    args.batch_size,
+    args.seed
 )
 os.makedirs(name)
 logging.basicConfig(
@@ -146,14 +158,19 @@ print("name " + name)
 inf = open(args.input, "rb")
 data = np.load(inf)
 X = data["X"]
+shuf = np.random.permutation(range(X.shape[0]))
+#shuf = range(X.shape[0])
 logging.info("X={0}".format(X[:5]))
+X = X[shuf]
 
 if args.target == "jlr":
-    y = data["y"][:, -1]
+    y = data["y"][:, -1][shuf]
 elif args.target == "fake":
     y = X[:, 0] + X[:, 4] + X[:, 8] + X[:, 12]
+
 if args.do_logtarget:
     y = np.log(y)
+
 logging.info("y={0}".format(y[:5]))
 
 cut = np.isfinite(y)
@@ -168,7 +185,8 @@ ib = np.searchsorted(b, y)
 
 w = np.ones(X.shape[0])
 if args.do_weight:
-    w = np.array([1000.0/c[_ib] if _ib < c.shape[0] else 0.0 for _ib in ib])
+    w = np.array([c[_ib] if _ib < c.shape[0] else 0.0 for _ib in ib])
+    w = 1000.0/w
     w[np.isinf(w)] = 0.0
     w[np.isnan(w)] = 0.0
 
@@ -249,14 +267,14 @@ for i in range(args.layers):
         mod.add(keras.layers.Activation("tanh"))
     
 mod.add(keras.layers.Dense(1, activation="linear", bias=False))
-mod.add(keras.layers.Lambda(lambda x,log_r_clip_value=log_r_clip_value: K.clip(x, -log_r_clip_value, +log_r_clip_value)))
+mod.add(keras.layers.Lambda(lambda x,log_r_clip_value=log_r_clip_value: x))
 
 mod.summary()
 
 def loss_function_ratio_regression(y_true, y_pred):
     r_loss = 1000.0*losses.mean_squared_error(
-        K.exp(K.clip(y_true, -log_r_clip_value, log_r_clip_value)),
-        K.exp(K.clip(y_pred, -log_r_clip_value, log_r_clip_value)))
+        K.exp(-K.clip(y_true, -log_r_clip_value, log_r_clip_value)),
+        K.exp(-K.clip(y_pred, -log_r_clip_value, log_r_clip_value)))
     return r_loss
 
 opt = keras.optimizers.Adam(lr=args.lr, clipnorm=args.clipnorm)
