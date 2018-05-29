@@ -273,7 +273,7 @@ def on_epoch_end(epoch, logs):
                 #    print(weight_mat)
         logging.info("epoch_weight {0} {1} means={2} stds={3}".format(epoch, layer.name, means, stds))
 
-    weights = mod.trainable_weights
+    #weights = mod.trainable_weights
     #gradients = K.gradients(mod.total_loss, weights)
     #for grad in gradients:
     #    gradvals = grad.eval(session=K.get_session(), feed_dict={
