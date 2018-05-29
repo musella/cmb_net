@@ -248,7 +248,7 @@ for i in range(args.layers):
     elif args.activation == "tanh":
         mod.add(keras.layers.Activation("tanh"))
     
-mod.add(keras.layers.Dense(1, activation="linear", bias_initializer="glorot_uniform", kernel_constraint=keras.constraints.max_norm(0.5)))
+mod.add(keras.layers.Dense(1, activation="linear", bias=False))
 mod.add(keras.layers.Lambda(lambda x,log_r_clip_value=log_r_clip_value: K.clip(x, -log_r_clip_value, +log_r_clip_value)))
 
 mod.summary()
