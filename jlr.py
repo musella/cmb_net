@@ -168,7 +168,7 @@ ib = np.searchsorted(b, y)
 
 w = np.ones(X.shape[0])
 if args.do_weight:
-    w = np.array([X.shape[0]/c[_ib] if _ib < c.shape[0] else 0.0 for _ib in ib])
+    w = np.array([1000.0/c[_ib] if _ib < c.shape[0] else 0.0 for _ib in ib])
     w[np.isinf(w)] = 0.0
     w[np.isnan(w)] = 0.0
 
