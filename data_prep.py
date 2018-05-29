@@ -16,7 +16,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--cut", type=str,
-    default="1", action="store",
+    default="", action="store",
     help="cut to apply"
 )
 parser.add_argument(
@@ -33,7 +33,8 @@ for fn in glob.glob("samples/{0}/*.csv".format(args.type))[:args.maxfiles]:
     cols = data.columns
 
     print "precut", data.shape
-    data = data[data.eval(args.cut)]
+    if len(args.cut) > 0:
+        data = data[data.eval(args.cut)]
     print "postcut", data.shape
     if args.type == "parton":
         feature_cols = cols[:-3]
