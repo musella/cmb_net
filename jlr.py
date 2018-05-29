@@ -14,7 +14,6 @@ from keras import losses
 from keras import backend as K
 from matplotlib.colors import LogNorm
 
-batch_size = 10000
 log_r_clip_value = 10.0
 
 parser = argparse.ArgumentParser()
@@ -27,6 +26,11 @@ parser.add_argument(
     "--layers", type=int,
     default=3, action="store",
     help="Number of intermediate layers"
+)
+parser.add_argument(
+    "--batch_size", type=int,
+    default=10000, action="store",
+    help="Batch size"
 )
 parser.add_argument(
     "--layersize", type=int,
@@ -120,14 +124,15 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.7f}_bn{5}_dn{6}_w{7}_{8}_{9}_{10}_{11}_cn{12:.2f}_reg{13:.2f}".format(
+name = "tr_l{0}x{1}_d{2:.2f}_{3}_lr{4:.7f}_bn{5}_dn{6}_w{7}_{8}_{9}_{10}_{11}_cn{12:.2f}_reg{13:.2f}_b{14}".format(
     args.layers, args.layersize,
     args.dropout, args.activation,
     args.lr, int(args.batchnorm),
     int(args.do_norm), int(args.do_weight),
     args.target, os.path.basename(args.input),
     args.ntrain, args.ntest,
-    args.clipnorm, args.layer_reg
+    args.clipnorm, args.layer_reg,
+    args.batch_size
 )
 os.makedirs(name)
 logging.basicConfig(
@@ -292,11 +297,11 @@ logging_callback = keras.callbacks.LambdaCallback(
 
 callbacks = []
 if args.do_tensorboard:
-    tb = keras.callbacks.TensorBoard(log_dir='./{0}/tb'.format(name), histogram_freq=1, write_grads=True, batch_size=batch_size)
+    tb = keras.callbacks.TensorBoard(log_dir='./{0}/tb'.format(name), histogram_freq=1, write_grads=True, batch_size=args.batch_size)
     callbacks += [tb]
 es = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=args.earlystop, verbose=0, mode='auto')
 callbacks += [es, logging_callback]
-ret = mod.fit(X_train, y_train, sample_weight=w_train, batch_size=batch_size, validation_data=(X_test, y_test, w_test), epochs=args.epochs, callbacks=callbacks, verbose=1)
+ret = mod.fit(X_train, y_train, sample_weight=w_train, batch_size=args.batch_size, validation_data=(X_test, y_test, w_test), epochs=args.epochs, callbacks=callbacks, verbose=1)
 
 plt.figure()
 plt.plot(ret.history["loss"][5:])
@@ -316,8 +321,8 @@ plt.savefig("{0}/loss.pdf".format(name))
 
 import matplotlib.pyplot as plt
 
-y_pred_train = mod.predict(X_train[:50000], batch_size=batch_size)
-y_pred_test = mod.predict(X_test[:50000], batch_size=batch_size)
+y_pred_train = mod.predict(X_train[:50000], batch_size=args.batch_size)
+y_pred_test = mod.predict(X_test[:50000], batch_size=args.batch_size)
 
 plt.figure()
 plt.scatter(y_train[:10000], y_pred_train[:10000], marker=".", alpha=0.2)
