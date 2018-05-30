@@ -377,18 +377,18 @@ ret = mod.fit(X_train, y_train, sample_weight=w_train, batch_size=args.batch_siz
 
 plt.figure()
 plt.plot(ret.history["loss"][5:])
-plt.ylim(0,20)
+plt.ylim(0,60)
 plt.savefig("{0}/loss_train.pdf".format(name))
 
 plt.figure()
 plt.plot(ret.history["val_loss"][5:])
-plt.ylim(0,20)
+plt.ylim(0,60)
 plt.savefig("{0}/loss_test.pdf".format(name))
 
 plt.figure()
 plt.plot(ret.history["loss"][5:])
 plt.plot(ret.history["val_loss"][5:])
-plt.ylim(0,20)
+plt.ylim(0,60)
 plt.savefig("{0}/loss.pdf".format(name))
 
 import matplotlib.pyplot as plt
