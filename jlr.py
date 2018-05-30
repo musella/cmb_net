@@ -29,6 +29,11 @@ parser.add_argument(
     help="Number of intermediate layers"
 )
 parser.add_argument(
+    "--verbosity", type=int,
+    default=0, action="store",
+    help="Training verbosity"
+)
+parser.add_argument(
     "--seed", type=int,
     default=1, action="store",
     help="The random seed"
@@ -368,7 +373,7 @@ if args.do_tensorboard:
     callbacks += [tb]
 es = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=args.earlystop, verbose=0, mode='auto')
 callbacks += [es, logging_callback]
-ret = mod.fit(X_train, y_train, sample_weight=w_train, batch_size=args.batch_size, validation_data=(X_test, y_test, w_test), epochs=args.epochs, callbacks=callbacks, verbose=1)
+ret = mod.fit(X_train, y_train, sample_weight=w_train, batch_size=args.batch_size, validation_data=(X_test, y_test, w_test), epochs=args.epochs, callbacks=callbacks, verbose=args.verbosity)
 
 plt.figure()
 plt.plot(ret.history["loss"][5:])
