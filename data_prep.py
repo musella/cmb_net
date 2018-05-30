@@ -21,32 +21,39 @@ parser.add_argument(
 )
 parser.add_argument(
     "--type", type=str,
-    default="reco", choices=["reco", "parton"],
-    help="type of input"
+    default="reco", choices=["reco", "parton", "gen"],
+    help="type of input, reco level, genjet level or parton level (hard ME)"
 )
 args = parser.parse_args()
 
 Xs = []
 ys = []
-for fn in glob.glob("samples/{0}/*.csv".format(args.type))[:args.maxfiles]:
+for fn in glob.glob("samples/combined/*.csv".format(args.type))[:args.maxfiles]:
     data = pd.read_csv(fn, delim_whitespace=True)
-    cols = data.columns
+    cols = list(data.columns)
+    ic1 = cols.index("gen_num_leptons")
+    ic2 = cols.index("top_pt")
+    reco_cols = cols[:ic1]
+    gen_cols = cols[ic1:ic2]
+    parton_cols = cols[ic2:-3]
 
     print "precut", data.shape
     if len(args.cut) > 0:
         data = data[data.eval(args.cut)]
     print "postcut", data.shape
     if args.type == "parton":
-        feature_cols = cols[:-3]
+        feature_cols = parton_cols
         target_cols = cols[-3:]
     elif args.type == "reco":
-        feature_cols = cols[:-3]
+        feature_cols = reco_cols
+        target_cols = cols[-3:]
+    elif args.type == "gen":
+        feature_cols = gen_cols
         target_cols = cols[-3:]
     print feature_cols
     print target_cols
     X = data[feature_cols].as_matrix().astype("float32")
     y = data[target_cols].as_matrix().astype("float32")
-    #y = X[:, 10:11] + X[:, 11:12]
     Xs += [X]
     ys += [y]
     print X.shape, y.shape
