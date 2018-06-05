@@ -14,8 +14,7 @@ from keras import losses
 from keras import backend as K
 from matplotlib.colors import LogNorm
 
-#Clip the predicted logarithm to -val ... +val
-log_r_clip_value = 10.0
+from jlr_util import build_ibnet, build_densenet, loss_function_ratio_regression, load_data, input_statistics, r2_score, on_epoch_end, loss_function_p4
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -30,7 +29,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--verbosity", type=int,
-    default=0, action="store",
+    default=1, action="store",
     help="Training verbosity"
 )
 parser.add_argument(
@@ -40,7 +39,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--batch_size", type=int,
-    default=10000, action="store",
+    default=1000, action="store",
     help="Batch size"
 )
 parser.add_argument(
@@ -134,7 +133,7 @@ from tensorflow import set_random_seed
 set_random_seed(args.seed)
 
 #create a unique name for the training
-name = "tr_l{layers}x{layersize}_d{dropout:.2f}_{activation}_lr{lr:.7f}_bn{batchnorm}_dn{do_norm}_w{do_weight}_{inp}_{ntrain}_{ntest}_cn{clipnorm:.2f}_reg{layer_reg:.2f}_b{batch_size}_s{seed}".format(
+name = "tr_l{layers}x{layersize}_d{dropout:.2f}_{activation}_lr{lr:.7f}_bn{batchnorm}_dn{do_norm}_w{do_weight}_{inp}_{ntrain}_{ntest}_cn{clipnorm:.2f}_reg{layer_reg:.2E}_b{batch_size}_s{seed}".format(
     layers=args.layers, layersize=args.layersize,
     dropout=args.dropout, activation=args.activation,
     lr=args.lr, batchnorm=int(args.batchnorm),
@@ -154,30 +153,8 @@ logging.basicConfig(
 )
 print("name " + name)
 
-def load_data(infile):
-    #load the input data
-    inf = open(infile, "rb")
-    data = np.load(inf)
-    X = data["X"]
-    
-    #shuffle the input data
-    shuf = np.random.permutation(range(X.shape[0]))
-    logging.info("X={0}".format(X[:5]))
-    X = X[shuf]
-    y = data["y"][:, -1][shuf]
-    
-    if args.do_logtarget:
-        y = np.log(y)
-    
-    logging.info("y={0}".format(y[:5]))
-    
-    cut = np.isfinite(y)
-    logging.info("applying cut to be finite, passed {0}/{1}".format(np.sum(cut), y.shape[0]))
-    X = X[cut]
-    y = y[cut]
-    return X, y
 
-X, y = load_data(args.input)
+X, Xparton, y = load_data(args.input)
 #create histogram for target
 logging.info("shapes {0} {1}".format(X.shape, y.shape))
 ybins = np.linspace(np.mean(y) - 6*np.std(y), np.mean(y) + 6*np.std(y), 100)
@@ -188,7 +165,7 @@ ib = np.searchsorted(b, y)
 w = np.ones(X.shape[0])
 if args.do_weight:
     w = np.array([c[_ib] if _ib < c.shape[0] else 0.0 for _ib in ib])
-    w = 1000.0/w
+    w = 100.0/w
     w[np.isinf(w)] = 0.0
     w[np.isnan(w)] = 0.0
 
@@ -206,36 +183,6 @@ if args.do_norm:
     #mean = np.mean(y)
     #std = np.std(y)
     #y = (y-mean)/std
-
-def input_statistics(X, filename):
-    ixs = []
-    X_means = []
-    X_stds = []
-    X_maxs = []
-    X_mins = []
-    #print statistics for inputs
-    for ix in range(X.shape[1]):
-        logging.info("X[{0}] mean={1:.4f} std={2:.4f} min={3:.4f} max={4:.4f}".format(
-            ix,
-            np.mean(X[:, ix]),
-            np.std(X[:, ix]),
-            np.min(X[:, ix]),
-            np.max(X[:, ix])
-        ))
-        ixs += [ix]
-        X_means += [np.mean(X[:, ix])]
-        X_stds += [np.std(X[:, ix])]
-        X_maxs += [np.max(X[:, ix])]
-        X_mins += [np.min(X[:, ix])]
-    X_means = np.array(X_means)
-    X_stds = np.array(X_stds)
-    X_maxs = np.array(X_maxs)
-    X_mins = np.array(X_mins)
-
-    plt.figure()
-    plt.errorbar(ixs, X_means, yerr=X_stds)
-    plt.bar(ixs, width=1, bottom=X_mins, height=(X_maxs - X_mins), alpha=0.2, color="gray")
-    plt.savefig("{0}/{1}".format(name, filename))
 
 logging.info("y mean={0:.4f} std={1:.4f} min={2:.4f} max={3:.4f}".format(
     np.mean(y),
@@ -264,23 +211,27 @@ plt.savefig("{0}/target_unw.pdf".format(name))
 if args.ntrain == 0 and args.ntest == 0:
     ntrain = int(0.8*X.shape[0])
     X_train = X[:ntrain]
+    Xparton_train = Xparton[:ntrain]
     y_train = y[:ntrain]
     w_train = w[:ntrain]
     
     X_test = X[ntrain:]
+    Xparton_test = Xparton[ntrain:]
     y_test = y[ntrain:]
     w_test = w[ntrain:]
 else:
     X_train = X[:args.ntrain]
+    Xparton_train = Xparton[:args.ntrain]
     y_train = y[:args.ntrain]
     w_train = w[:args.ntrain]
     
     X_test = X[args.ntrain:args.ntrain+args.ntest]
+    Xparton_test = Xparton[args.ntrain:args.ntrain+args.ntest]
     y_test = y[args.ntrain:args.ntrain+args.ntest]
     w_test = w[args.ntrain:args.ntrain+args.ntest]
 
-input_statistics(X_train, "inputs_train.pdf")
-input_statistics(X_test, "inputs_test.pdf")
+input_statistics(X_train, name, "inputs_train.pdf")
+input_statistics(X_test, name, "inputs_test.pdf")
 
 #plot the target
 plt.figure()
@@ -288,83 +239,14 @@ plt.hist(y_train, bins=ybins, weights=w_train)
 plt.hist(y_test, bins=ybins, weights=w_test)
 plt.savefig("{0}/target.pdf".format(name))
 
-mod = keras.models.Sequential()
-mod.add(keras.layers.InputLayer(input_shape=(X.shape[1], )))
-
-for i in range(args.layers):
-    #redue the layer size by 2 for every next layer
-    layersize = int(args.layersize / pow(2, i))
-
-    if args.batchnorm:
-        mod.add(keras.layers.BatchNormalization())
-    
-    mod.add(keras.layers.Dense(layersize,
-        kernel_regularizer=keras.regularizers.l2(args.layer_reg),
-        bias_regularizer=keras.regularizers.l2(args.layer_reg)
-    ))
-    
-    if args.dropout > 0.0:
-        dropout_amount = args.dropout
-
-        #less dropout in first hidden layer
-        if i == 0:
-            dropout_amount = dropout_amount / 2.0
-        mod.add(keras.layers.Dropout(dropout_amount))
-    if args.activation == "relu":
-        mod.add(keras.layers.Activation("relu"))
-    elif args.activation == "leakyrelu":
-        mod.add(keras.layers.LeakyReLU(alpha=0.1))
-    elif args.activation == "prelu":
-        mod.add(keras.layers.PReLU())
-    elif args.activation == "elu":
-        mod.add(keras.layers.ELU())
-    elif args.activation == "tanh":
-        mod.add(keras.layers.Activation("tanh"))
-
-mod.add(keras.layers.Dense(1, activation="linear", bias=False))
-
+#mod = build_densenet(X, args.layers, args.dropout, args.layersize, args.batchnorm, args.layer_reg)
+mod = build_ibnet(X, args.layers, args.dropout, args.layersize, args.batchnorm, args.activation, args.layer_reg)
 mod.summary()
-
-#loss function between predicted and true log values
-def loss_function_ratio_regression(y_true, y_pred):
-    r_loss = 1000.0*losses.mean_squared_error(
-        K.exp(K.clip(y_true, -log_r_clip_value, log_r_clip_value)),
-        K.exp(K.clip(y_pred, -log_r_clip_value, log_r_clip_value)))
-    return r_loss
-
 opt = keras.optimizers.Adam(lr=args.lr, clipnorm=args.clipnorm)
-mod.compile(loss=loss_function_ratio_regression, optimizer=opt)
-
-def on_epoch_end(epoch, logs):
-    #get layer weight statistics
-    for layer in mod.layers:
-        weights = layer.get_weights()
-        means = []
-        stds = []
-        if len(weights)>0:
-            for weight_mat in weights:
-                weight_mat_flat = weight_mat.flatten()
-                stds += [np.std(weight_mat_flat)]
-                means += [np.mean(weight_mat_flat)]
-                #if "dense_4" in layer.name:
-                #    print(weight_mat)
-        logging.info("epoch_weight {0} {1} means={2} stds={3}".format(epoch, layer.name, means, stds))
-
-    #weights = mod.trainable_weights
-    #gradients = K.gradients(mod.total_loss, weights)
-    #for grad in gradients:
-    #    gradvals = grad.eval(session=K.get_session(), feed_dict={
-    #        mod.input: X_train[:1000],
-    #        mod.sample_weights[0]: w_train[:1000],
-    #        mod.targets[0]: y_train[:1000].reshape(1000,1)
-    #    }).flatten()
-    #    #if "dense_4" in grad.name:
-    #    #    print(gradvals)
-    #    logging.info("epoch_grad {0} {1} means={2} stds={3}".format(epoch, grad.name, np.mean(gradvals.flatten()), np.std(gradvals.flatten())))
-    logging.info("epoch_end {0} {1} {2}".format(epoch, logs["loss"], logs["val_loss"]))
+mod.compile(loss={"main_output": loss_function_ratio_regression, "ib_layer": loss_function_p4}, optimizer=opt, metrics=[r2_score], loss_weights={"main_output": 1.0, "ib_layer": 0.001})
 
 logging_callback = keras.callbacks.LambdaCallback(
-    on_epoch_end=on_epoch_end
+    on_epoch_end=lambda x,y,mod=mod: on_epoch_end(mod, x, y)
 )
 
 callbacks = []
@@ -373,7 +255,7 @@ if args.do_tensorboard:
     callbacks += [tb]
 es = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=args.earlystop, verbose=0, mode='auto')
 callbacks += [es, logging_callback]
-ret = mod.fit(X_train, y_train, sample_weight=w_train, batch_size=args.batch_size, validation_data=(X_test, y_test, w_test), epochs=args.epochs, callbacks=callbacks, verbose=args.verbosity)
+ret = mod.fit(X_train, [y_train, Xparton_train], batch_size=args.batch_size, validation_data=(X_test, [y_test, Xparton_test]), epochs=args.epochs, callbacks=callbacks, verbose=args.verbosity)
 
 plt.figure()
 plt.plot(ret.history["loss"][5:])
@@ -391,10 +273,16 @@ plt.plot(ret.history["val_loss"][5:])
 plt.ylim(0,60)
 plt.savefig("{0}/loss.pdf".format(name))
 
+plt.figure()
+plt.plot(ret.history["main_output_r2_score"][5:])
+plt.plot(ret.history["val_main_output_r2_score"][5:])
+plt.ylim(-5,1)
+plt.savefig("{0}/r2_score.pdf".format(name))
+
 import matplotlib.pyplot as plt
 
-y_pred_train = mod.predict(X_train[:50000], batch_size=args.batch_size)
-y_pred_test = mod.predict(X_test[:50000], batch_size=args.batch_size)
+y_pred_train = mod.predict(X_train[:50000], batch_size=args.batch_size)[0]
+y_pred_test = mod.predict(X_test[:50000], batch_size=args.batch_size)[0]
 
 plt.figure()
 plt.scatter(y_train[:10000], y_pred_train[:10000], marker=".", alpha=0.2)
@@ -407,4 +295,3 @@ plt.scatter(y_test[:10000], y_pred_test[:10000], marker=".", alpha=0.2)
 plt.xlabel("true")
 plt.ylabel("pred")
 plt.savefig("{0}/test.pdf".format(name))
-
