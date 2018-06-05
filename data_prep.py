@@ -26,7 +26,8 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-Xs = []
+Xsreco = []
+Xsparton = []
 ys = []
 
 reco_cols = ['num_leptons', 'leptons_pt_0', 'leptons_pt_1', 'leptons_eta_0', 'leptons_eta_1', 'leptons_phi_0', 'leptons_phi_1', 'leptons_mass_0', 'leptons_mass_1', 'num_jets', 'jets_pt_0', 'jets_pt_1', 'jets_pt_2', 'jets_pt_3', 'jets_pt_4', 'jets_pt_5', 'jets_pt_6', 'jets_pt_7', 'jets_pt_8', 'jets_pt_9', 'jets_eta_0', 'jets_eta_1', 'jets_eta_2', 'jets_eta_3', 'jets_eta_4', 'jets_eta_5', 'jets_eta_6', 'jets_eta_7', 'jets_eta_8', 'jets_eta_9', 'jets_phi_0', 'jets_phi_1', 'jets_phi_2', 'jets_phi_3',
@@ -39,7 +40,7 @@ gen_cols = ['gen_num_leptons', 'gen_leptons_pt_0', 'gen_leptons_pt_1', 'gen_lept
 parton_cols = ['top_pt', 'top_eta', 'top_phi', 'top_mass', 'atop_pt', 'atop_eta', 'atop_phi', 'atop_mass', 'bottom_pt', 'bottom_eta', 'bottom_phi', 'bottom_mass', 'abottom_pt', 'abottom_eta', 'abottom_phi', 'abottom_mass']
 target_cols = ['prob_ttH', 'prob_ttbb', 'JLR']
 
-#['jets_matchFlag_0', 'jets_matchFlag_1', 'jets_matchFlag_2', 'jets_matchFlag_3', 'jets_matchFlag_4', 'jets_matchFlag_5', 'jets_matchFlag_6', 'jets_matchFlag_7', 'jets_matchFlag_8', 'jets_matchFlag_9',]
+#reco_cols += ['jets_matchFlag_0', 'jets_matchFlag_1', 'jets_matchFlag_2', 'jets_matchFlag_3', 'jets_matchFlag_4', 'jets_matchFlag_5', 'jets_matchFlag_6', 'jets_matchFlag_7', 'jets_matchFlag_8', 'jets_matchFlag_9']
 #['nMatch_wq', 'nMatch_tb', 'nMatch_hb',]
 
 
@@ -59,16 +60,19 @@ for fn in glob.glob("data/Jun5/*.csv".format(args.type))[:args.maxfiles]:
         feature_cols = gen_cols
     print feature_cols
     print target_cols
-    X = data[feature_cols].as_matrix().astype("float32")
+    Xreco = data[reco_cols].as_matrix().astype("float32")
+    Xparton = data[parton_cols].as_matrix().astype("float32")
     y = data[target_cols].as_matrix().astype("float32")
-    Xs += [X]
+    Xsreco += [Xreco]
+    Xsparton += [Xparton]
     ys += [y]
-    print X.shape, y.shape
+    print Xreco.shape, Xparton.shape, y.shape
 
-X = np.vstack(Xs)
+Xreco = np.vstack(Xsreco)
+Xparton = np.vstack(Xsparton)
 y = np.vstack(ys)
 
 of = open(args.output, "wb")
-print X.shape, y.shape
-np.savez(of, X=X, y=y)
+print Xreco.shape, Xparton.shape, y.shape
+np.savez(of, Xreco=Xreco, Xparton=Xparton, y=y)
 of.close()
