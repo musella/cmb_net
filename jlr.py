@@ -239,11 +239,12 @@ plt.hist(y_train, bins=ybins, weights=w_train)
 plt.hist(y_test, bins=ybins, weights=w_test)
 plt.savefig("{0}/target.pdf".format(name))
 
+K.set_learning_phase(True)
 #mod = build_densenet(X, args.layers, args.dropout, args.layersize, args.batchnorm, args.layer_reg)
 mod = build_ibnet(X, args.layers, args.dropout, args.layersize, args.batchnorm, args.activation, args.layer_reg)
 mod.summary()
 opt = keras.optimizers.Adam(lr=args.lr, clipnorm=args.clipnorm)
-mod.compile(loss={"main_output": loss_function_ratio_regression, "ib_layer": loss_function_p4}, optimizer=opt, metrics=[r2_score], loss_weights={"main_output": 1.0, "ib_layer": 0.001})
+mod.compile(loss={"main_output": loss_function_ratio_regression, "ib_layer": loss_function_p4}, optimizer=opt, metrics=[r2_score], loss_weights={"main_output": 1.0, "ib_layer": 0.01})
 
 logging_callback = keras.callbacks.LambdaCallback(
     on_epoch_end=lambda x,y,mod=mod: on_epoch_end(mod, x, y)
@@ -255,7 +256,8 @@ if args.do_tensorboard:
     callbacks += [tb]
 es = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=args.earlystop, verbose=0, mode='auto')
 callbacks += [es, logging_callback]
-ret = mod.fit(X_train, [y_train, Xparton_train], batch_size=args.batch_size, validation_data=(X_test, [y_test, Xparton_test]), epochs=args.epochs, callbacks=callbacks, verbose=args.verbosity)
+ret = mod.fit(X_train, [y_train, Xparton_train], sample_weight=[w_train, w_train], batch_size=args.batch_size, validation_data=(X_test, [y_test, Xparton_test], [w_test, w_test]), epochs=args.epochs, callbacks=callbacks, verbose=args.verbosity)
+K.set_learning_phase(False)
 
 plt.figure()
 plt.plot(ret.history["loss"][5:])

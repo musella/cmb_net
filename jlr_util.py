@@ -5,6 +5,7 @@ import keras
 import numpy as np
 import matplotlib.pyplot as plt
 import logging
+from keras import backend as K
 
 #Clip the predicted logarithm to -val ... +val
 log_r_clip_value = 10.0
@@ -17,6 +18,7 @@ def r2_score(y_true, y_pred):
     return ( 1 - SS_res/(SS_tot + K.epsilon()) )
 
 def on_epoch_end(mod, epoch, logs):
+    K.set_learning_phase(False)
     #get layer weight statistics
     for layer in mod.layers:
         weights = layer.get_weights()
@@ -43,6 +45,7 @@ def on_epoch_end(mod, epoch, logs):
     #    #    print(gradvals)
     #    logging.info("epoch_grad {0} {1} means={2} stds={3}".format(epoch, grad.name, np.mean(gradvals.flatten()), np.std(gradvals.flatten())))
     logging.info("epoch_end {0} {1} {2}".format(epoch, logs["loss"], logs["val_loss"]))
+    K.set_learning_phase(True)
 
 def get_activation(activation):
     if activation == "relu":
@@ -154,7 +157,7 @@ def build_ibnet(X, nlayers, dropout, layersize, batchnorm, activation, layer_reg
     inputs = keras.layers.Input(shape=(X.shape[1], ))
     prev = inputs
 
-    for i in range(2):
+    for i in range(nlayers):
         if batchnorm:
             prev = keras.layers.BatchNormalization()(prev)
         prev = keras.layers.Dense(layersize,
