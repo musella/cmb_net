@@ -14,7 +14,7 @@ from keras import losses
 from keras import backend as K
 from matplotlib.colors import LogNorm
 
-from jlr_util import build_ibnet, build_densenet, loss_function_ratio_regression, load_data, input_statistics, r2_score, on_epoch_end, loss_function_p4
+from jlr_util import build_ibnet, build_densenet, loss_function_ratio_regression, load_data, input_statistics, r2_score, on_epoch_end, loss_function_p4, build_parton_net
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -50,7 +50,7 @@ parser.add_argument(
 parser.add_argument(
     "--activation", type=str,
     default="tanh", action="store",
-    choices=["relu", "leakyrelu", "prelu", "tanh", "elu"],
+    choices=["relu", "leakyrelu", "prelu", "tanh", "elu", "selu"],
     help="Activation function"
 )
 parser.add_argument(
@@ -241,13 +241,15 @@ plt.savefig("{0}/target.pdf".format(name))
 
 K.set_learning_phase(True)
 #mod = build_densenet(X, args.layers, args.dropout, args.layersize, args.batchnorm, args.layer_reg)
-mod = build_ibnet(X, args.layers, args.dropout, args.layersize, args.batchnorm, args.activation, args.layer_reg)
+#mod = build_ibnet(X, args.layers, args.dropout, args.layersize, args.batchnorm, args.activation, args.layer_reg)
+mod = build_parton_net(X, args.layers, args.dropout, args.layersize, args.batchnorm, args.activation, args.layer_reg)
 mod.summary()
 opt = keras.optimizers.Adam(lr=args.lr, clipnorm=args.clipnorm)
-mod.compile(loss={"main_output": loss_function_ratio_regression, "ib_layer": loss_function_p4}, optimizer=opt, metrics=[r2_score], loss_weights={"main_output": 1.0, "ib_layer": 0.01})
+#mod.compile(loss={"main_output": loss_function_ratio_regression, "ib_layer": loss_function_p4}, optimizer=opt, metrics=[r2_score], loss_weights={"main_output": 1.0, "ib_layer": 0.1})
+mod.compile(loss=loss_function_p4, optimizer=opt)
 
 logging_callback = keras.callbacks.LambdaCallback(
-    on_epoch_end=lambda x,y,mod=mod: on_epoch_end(mod, x, y)
+    on_epoch_end=lambda x,y,mod=mod,X_test=X_test,Xparton_test=Xparton_test: on_epoch_end(X_test, Xparton_test, mod, x, y)
 )
 
 callbacks = []
@@ -256,7 +258,8 @@ if args.do_tensorboard:
     callbacks += [tb]
 es = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=args.earlystop, verbose=0, mode='auto')
 callbacks += [es, logging_callback]
-ret = mod.fit(X_train, [y_train, Xparton_train], sample_weight=[w_train, w_train], batch_size=args.batch_size, validation_data=(X_test, [y_test, Xparton_test], [w_test, w_test]), epochs=args.epochs, callbacks=callbacks, verbose=args.verbosity)
+#ret = mod.fit(X_train, [y_train, Xparton_train], sample_weight=[w_train, w_train], batch_size=args.batch_size, validation_data=(X_test, [y_test, Xparton_test], [w_test, w_test]), epochs=args.epochs, callbacks=callbacks, verbose=args.verbosity)
+ret = mod.fit(X_train, Xparton_train, sample_weight=w_train, batch_size=args.batch_size, validation_data=(X_test, Xparton_test, w_test), epochs=args.epochs, callbacks=callbacks, verbose=args.verbosity)
 K.set_learning_phase(False)
 
 plt.figure()
@@ -275,11 +278,11 @@ plt.plot(ret.history["val_loss"][5:])
 plt.ylim(0,60)
 plt.savefig("{0}/loss.pdf".format(name))
 
-plt.figure()
-plt.plot(ret.history["main_output_r2_score"][5:])
-plt.plot(ret.history["val_main_output_r2_score"][5:])
-plt.ylim(-5,1)
-plt.savefig("{0}/r2_score.pdf".format(name))
+#plt.figure()
+#plt.plot(ret.history["main_output_r2_score"][5:])
+#plt.plot(ret.history["val_main_output_r2_score"][5:])
+#plt.ylim(-5,1)
+#plt.savefig("{0}/r2_score.pdf".format(name))
 
 import matplotlib.pyplot as plt
 

@@ -17,7 +17,7 @@ def r2_score(y_true, y_pred):
     SS_tot = K.sum(K.square( y_true - K.mean(y_true) ) )
     return ( 1 - SS_res/(SS_tot + K.epsilon()) )
 
-def on_epoch_end(mod, epoch, logs):
+def on_epoch_end(X, Xparton, mod, epoch, logs):
     K.set_learning_phase(False)
     #get layer weight statistics
     for layer in mod.layers:
@@ -32,6 +32,13 @@ def on_epoch_end(mod, epoch, logs):
                 #if "dense_4" in layer.name:
                 #    print(weight_mat)
         logging.info("epoch_weight {0} {1} means={2} stds={3}".format(epoch, layer.name, means, stds))
+    Xparton_pred = mod.predict(X[:5])
+    
+    for i in range(5):
+        s = ""
+        for j in range(Xparton.shape[1]):
+            s += "{0:.2f} ({1:.2f}) | ".format(Xparton_pred[i,j], Xparton[i,j])
+        print s
 
     #weights = mod.trainable_weights
     #gradients = K.gradients(mod.total_loss, weights)
@@ -44,7 +51,8 @@ def on_epoch_end(mod, epoch, logs):
     #    #if "dense_4" in grad.name:
     #    #    print(gradvals)
     #    logging.info("epoch_grad {0} {1} means={2} stds={3}".format(epoch, grad.name, np.mean(gradvals.flatten()), np.std(gradvals.flatten())))
-    logging.info("epoch_end {0} {1} {2} {3} {4}".format(epoch, logs["loss"], logs["val_loss"], logs["main_output_r2_score"], logs["val_main_output_r2_score"]))
+    #logging.info("epoch_end {0} {1} {2} {3} {4}".format(epoch, logs["loss"], logs["val_loss"], logs["main_output_r2_score"], logs["val_main_output_r2_score"]))
+    logging.info("epoch_end {0} {1} {2}".format(epoch, logs["loss"], logs["val_loss"]))
     K.set_learning_phase(True)
 
 def get_activation(activation):
@@ -58,6 +66,8 @@ def get_activation(activation):
         return keras.layers.ELU()
     elif activation == "tanh":
         return keras.layers.Activation("tanh")
+    elif activation == "selu":
+        return keras.layers.Activation("selu")
     else:
         raise Exception("Unknown activation: {0}".format(activation))
 
@@ -152,6 +162,26 @@ def loss_function_p4(y_true, y_pred):
     from keras import backend as K
     r_loss = K.mean(K.square(y_pred - y_true), axis=-1)/K.std(y_true, axis=-1) 
     return r_loss
+
+def build_parton_net(X, nlayers, dropout, layersize, batchnorm, activation, layer_reg):
+    inputs = keras.layers.Input(shape=(X.shape[1], ))
+    prev = inputs
+
+    for i in range(nlayers):
+        if batchnorm:
+            prev = keras.layers.BatchNormalization()(prev)
+        prev = keras.layers.Dense(layersize,
+            kernel_regularizer=keras.regularizers.l2(layer_reg),
+            bias_regularizer=keras.regularizers.l2(layer_reg)
+        )(prev)
+        prev = get_activation(activation)(prev)
+        if dropout > 0.0:
+            dropout_amount = dropout
+            prev = keras.layers.Dropout(dropout_amount)(prev)
+    
+    ib_layer = keras.layers.Dense(4*4, name="ib_layer")(prev)
+    model = keras.models.Model(inputs=inputs, outputs=ib_layer)
+    return model
 
 def build_ibnet(X, nlayers, dropout, layersize, batchnorm, activation, layer_reg):
     inputs = keras.layers.Input(shape=(X.shape[1], ))
