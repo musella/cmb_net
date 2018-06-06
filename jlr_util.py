@@ -44,7 +44,7 @@ def on_epoch_end(mod, epoch, logs):
     #    #if "dense_4" in grad.name:
     #    #    print(gradvals)
     #    logging.info("epoch_grad {0} {1} means={2} stds={3}".format(epoch, grad.name, np.mean(gradvals.flatten()), np.std(gradvals.flatten())))
-    logging.info("epoch_end {0} {1} {2}".format(epoch, logs["loss"], logs["val_loss"]))
+    logging.info("epoch_end {0} {1} {2} {3} {4}".format(epoch, logs["loss"], logs["val_loss"], logs["main_output_r2_score"], logs["val_main_output_r2_score"]))
     K.set_learning_phase(True)
 
 def get_activation(activation):

@@ -252,7 +252,7 @@ logging_callback = keras.callbacks.LambdaCallback(
 
 callbacks = []
 if args.do_tensorboard:
-    tb = keras.callbacks.TensorBoard(log_dir='./{0}/tb'.format(name), histogram_freq=1, write_grads=True, batch_size=args.batch_size)
+    tb = keras.callbacks.TensorBoard(log_dir='./{0}/tb'.format(name), histogram_freq=0, write_grads=False, batch_size=args.batch_size)
     callbacks += [tb]
 es = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=args.earlystop, verbose=0, mode='auto')
 callbacks += [es, logging_callback]
