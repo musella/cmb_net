@@ -17,28 +17,28 @@ def r2_score(y_true, y_pred):
     SS_tot = K.sum(K.square( y_true - K.mean(y_true) ) )
     return ( 1 - SS_res/(SS_tot + K.epsilon()) )
 
-def on_epoch_end(X, Xparton, mod, epoch, logs):
+def on_epoch_end(epoch, logs):
     K.set_learning_phase(False)
     #get layer weight statistics
-    for layer in mod.layers:
-        weights = layer.get_weights()
-        means = []
-        stds = []
-        if len(weights)>0:
-            for weight_mat in weights:
-                weight_mat_flat = weight_mat.flatten()
-                stds += [np.std(weight_mat_flat)]
-                means += [np.mean(weight_mat_flat)]
-                #if "dense_4" in layer.name:
-                #    print(weight_mat)
-        logging.info("epoch_weight {0} {1} means={2} stds={3}".format(epoch, layer.name, means, stds))
-    Xparton_pred = mod.predict(X[:5])
-    
-    for i in range(5):
-        s = ""
-        for j in range(Xparton.shape[1]):
-            s += "{0:.2f} ({1:.2f}) | ".format(Xparton_pred[i,j], Xparton[i,j])
-        print s
+    #for layer in mod.layers:
+    #    weights = layer.get_weights()
+    #    means = []
+    #    stds = []
+    #    if len(weights)>0:
+    #        for weight_mat in weights:
+    #            weight_mat_flat = weight_mat.flatten()
+    #            stds += [np.std(weight_mat_flat)]
+    #            means += [np.mean(weight_mat_flat)]
+    #            #if "dense_4" in layer.name:
+    #            #    print(weight_mat)
+    #    logging.info("epoch_weight {0} {1} means={2} stds={3}".format(epoch, layer.name, means, stds))
+    #Xparton_pred = mod.predict(X[:5])
+    #
+    #for i in range(5):
+    #    s = ""
+    #    for j in range(Xparton.shape[1]):
+    #        s += "{0:.2f} ({1:.2f}) | ".format(Xparton_pred[i,j], Xparton[i,j])
+    #    print s
 
     #weights = mod.trainable_weights
     #gradients = K.gradients(mod.total_loss, weights)
@@ -76,7 +76,7 @@ def load_data(infile):
     inf = open(infile, "rb")
     data = np.load(inf)
     Xreco = data["Xreco"]
-    Xadditional = data["Xadditional"]
+    #Xadditional = data["Xadditional"]
     Xmatch = data["Xmatch"]
     Xparton = data["Xparton"]
     
@@ -86,7 +86,7 @@ def load_data(infile):
     Xreco = Xreco[shuf]
     Xparton = Xparton[shuf]
     Xmatch = Xmatch[shuf]
-    Xadditional = Xadditional[shuf]
+    #Xadditional = Xadditional[shuf]
     y = data["y"][:, -1][shuf]
     
     logging.info("y={0}".format(y[:5]))
@@ -95,10 +95,10 @@ def load_data(infile):
     logging.info("applying cut to be finite, passed {0}/{1}".format(np.sum(cut), y.shape[0]))
     Xreco = Xreco[cut]
     Xparton = Xparton[cut]
-    Xadditional = Xadditional[cut]
+    #Xadditional = Xadditional[cut]
     Xmatch = Xmatch[cut]
     y = y[cut]
-    return Xreco, Xadditional, Xmatch, Xparton, y
+    return Xreco, Xmatch, Xparton, y
 
 def input_statistics(X, name, filename):
     ixs = []
@@ -153,13 +153,13 @@ def build_densenet(X, nlayers, dropout, layersize, batchnorm, activation, layer_
             if i == 0:
                 dropout_amount = dropout_amount / 2.0
             mod.add(keras.layers.Dropout(dropout_amount))
-    mod.add(keras.layers.Dense(1, activation="linear", bias=False))
+    mod.add(keras.layers.Dense(1, activation="linear"))
     return mod
 
 #loss function between predicted and true log values
 def loss_function_ratio_regression(y_true, y_pred):
     from keras import backend as K
-    r_loss = 100.0 * keras.losses.mean_squared_error(
+    r_loss = keras.losses.mean_squared_error(
         K.exp(K.clip(y_true, -log_r_clip_value, log_r_clip_value)),
         K.exp(K.clip(y_pred, -log_r_clip_value, log_r_clip_value)))
     return r_loss
