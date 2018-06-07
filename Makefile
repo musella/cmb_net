@@ -1,21 +1,14 @@
-data: data_gen data_reco data_parton
 
-data_gen:
-	python data_prep.py --output gen.npz --type gen --maxfiles -1  --cut="(num_leptons==1) & (num_jets>=4)"
+data_dl:
+	python data_prep.py --maxfiles -1 --output /scratch/jpata2/data_dl.npz --cut "(gen_num_leptons==2) & (gen_num_jets>=4)"
 
-data_reco:
-	python data_prep.py --output reco.npz --type reco --maxfiles -1  --cut="(num_leptons==1) & (num_jets>=4)"
+data_dl_match:
+	python data_prep.py --maxfiles -1 --output /scratch/jpata2/data_dl_match.npz --cut "(gen_num_leptons==2) & (gen_num_jets>=4) & (nMatch_tb==2) & (nMatch_hb==2)"
 
-data_parton:
-	python data_prep.py --output parton.npz --type parton --maxfiles -1  --cut="(num_leptons==1) & (num_jets>=4)"
+data_sl:
+	python data_prep.py --maxfiles -1 --output /scratch/jpata2/data_sl.npz --cut "(gen_num_leptons==1) & (gen_num_jets>=6)"
 
-train: train_reco train_parton train_gen
+data_all:
+	python data_prep.py --maxfiles -1 --output /scratch/jpata2/data_all.npz
 
-train_reco:
-	OMP_NUM_THREADS=1 python jlr.py --input reco.npz --ntrain 700000 --ntest 100000 --batchnorm --activation tanh --layersize 256 --verbosity 1
-
-train_parton:
-	OMP_NUM_THREADS=1 python jlr.py --input parton.npz --ntrain 700000 --ntest 100000 --batchnorm --activation tanh --layersize 256 --verbosity 1
-
-train_gen:
-	OMP_NUM_THREADS=1 python jlr.py --input gen.npz --ntrain 700000 --ntest 100000 --batchnorm --activation tanh --layersize 256 --verbosity 1
+.PHONY: data_dl data_sl data_all

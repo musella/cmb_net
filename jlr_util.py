@@ -76,6 +76,8 @@ def load_data(infile):
     inf = open(infile, "rb")
     data = np.load(inf)
     Xreco = data["Xreco"]
+    Xadditional = data["Xadditional"]
+    Xmatch = data["Xmatch"]
     Xparton = data["Xparton"]
     
     #shuffle the input data
@@ -83,6 +85,8 @@ def load_data(infile):
     logging.info("Xreco={0}".format(Xreco[:5]))
     Xreco = Xreco[shuf]
     Xparton = Xparton[shuf]
+    Xmatch = Xmatch[shuf]
+    Xadditional = Xadditional[shuf]
     y = data["y"][:, -1][shuf]
     
     logging.info("y={0}".format(y[:5]))
@@ -91,8 +95,10 @@ def load_data(infile):
     logging.info("applying cut to be finite, passed {0}/{1}".format(np.sum(cut), y.shape[0]))
     Xreco = Xreco[cut]
     Xparton = Xparton[cut]
+    Xadditional = Xadditional[cut]
+    Xmatch = Xmatch[cut]
     y = y[cut]
-    return Xreco, Xparton, y
+    return Xreco, Xadditional, Xmatch, Xparton, y
 
 def input_statistics(X, name, filename):
     ixs = []

@@ -154,14 +154,15 @@ logging.basicConfig(
 print("name " + name)
 
 
-X, Xparton, y = load_data(args.input)
+X, Xadditional, Xmatch, Xparton, y = load_data(args.input)
+
 #create histogram for target
 logging.info("shapes {0} {1}".format(X.shape, y.shape))
 ybins = np.linspace(np.mean(y) - 6*np.std(y), np.mean(y) + 6*np.std(y), 100)
 c, b = np.histogram(y, bins=ybins)
 ib = np.searchsorted(b, y)
 
-#compute weights for target to be flat
+#compute sample weights for target to be flat
 w = np.ones(X.shape[0])
 if args.do_weight:
     w = np.array([c[_ib] if _ib < c.shape[0] else 0.0 for _ib in ib])
@@ -211,22 +212,30 @@ plt.savefig("{0}/target_unw.pdf".format(name))
 if args.ntrain == 0 and args.ntest == 0:
     ntrain = int(0.8*X.shape[0])
     X_train = X[:ntrain]
+    Xadditional_train = Xadditional[:ntrain]
+    Xmatch_train = Xmatch[:ntrain]
     Xparton_train = Xparton[:ntrain]
     y_train = y[:ntrain]
     w_train = w[:ntrain]
     
     X_test = X[ntrain:]
     Xparton_test = Xparton[ntrain:]
+    Xadditional_test = Xadditional[:ntest]
+    Xmatch_test = Xmatch[:ntest]
     y_test = y[ntrain:]
     w_test = w[ntrain:]
 else:
     X_train = X[:args.ntrain]
     Xparton_train = Xparton[:args.ntrain]
+    Xadditional_train = Xadditional[:args.ntrain]
+    Xmatch_train = Xmatch[:args.ntrain]
     y_train = y[:args.ntrain]
     w_train = w[:args.ntrain]
     
     X_test = X[args.ntrain:args.ntrain+args.ntest]
     Xparton_test = Xparton[args.ntrain:args.ntrain+args.ntest]
+    Xadditional_test = Xadditional[args.ntrain:args.ntrain+args.ntest]
+    Xmatch_test = Xmatch[args.ntrain:args.ntrain+args.ntest]
     y_test = y[args.ntrain:args.ntrain+args.ntest]
     w_test = w[args.ntrain:args.ntrain+args.ntest]
 
@@ -240,13 +249,14 @@ plt.hist(y_test, bins=ybins, weights=w_test)
 plt.savefig("{0}/target.pdf".format(name))
 
 K.set_learning_phase(True)
-#mod = build_densenet(X, args.layers, args.dropout, args.layersize, args.batchnorm, args.layer_reg)
+mod = build_densenet(X, args.layers, args.dropout, args.layersize, args.batchnorm, args.layer_reg)
 #mod = build_ibnet(X, args.layers, args.dropout, args.layersize, args.batchnorm, args.activation, args.layer_reg)
-mod = build_parton_net(X, args.layers, args.dropout, args.layersize, args.batchnorm, args.activation, args.layer_reg)
+#mod = build_parton_net(X, args.layers, args.dropout, args.layersize, args.batchnorm, args.activation, args.layer_reg)
 mod.summary()
 opt = keras.optimizers.Adam(lr=args.lr, clipnorm=args.clipnorm)
+mod.compile(loss=loss_function_ratio_regression, optimizer=opt, metrics=[r2_score])
 #mod.compile(loss={"main_output": loss_function_ratio_regression, "ib_layer": loss_function_p4}, optimizer=opt, metrics=[r2_score], loss_weights={"main_output": 1.0, "ib_layer": 0.1})
-mod.compile(loss=loss_function_p4, optimizer=opt)
+#mod.compile(loss=loss_function_p4, optimizer=opt)
 
 logging_callback = keras.callbacks.LambdaCallback(
     on_epoch_end=lambda x,y,mod=mod,X_test=X_test,Xparton_test=Xparton_test: on_epoch_end(X_test, Xparton_test, mod, x, y)

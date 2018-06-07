@@ -25,9 +25,14 @@ parser.add_argument(
     default="reco", choices=["reco", "parton", "gen"],
     help="type of input, reco level, genjet level or parton level (hard ME)"
 )
+do_cartesian = True
+do_standard = False
+
 args = parser.parse_args()
 
 Xsreco = []
+Xsadditional = []
+Xsmatch = []
 Xsparton = []
 ys = []
 
@@ -46,9 +51,61 @@ gen_cols = ['gen_num_leptons', 'gen_leptons_pt_0', 'gen_leptons_pt_1', 'gen_lept
 parton_cols = ['top_pt', 'top_eta', 'top_phi', 'top_mass', 'atop_pt', 'atop_eta', 'atop_phi', 'atop_mass', 'bottom_pt', 'bottom_eta', 'bottom_phi', 'bottom_mass', 'abottom_pt', 'abottom_eta', 'abottom_phi', 'abottom_mass']
 target_cols = ['prob_ttH', 'prob_ttbb', 'JLR']
 
-#reco_cols += ['jets_matchFlag_0', 'jets_matchFlag_1', 'jets_matchFlag_2', 'jets_matchFlag_3', 'jets_matchFlag_4', 'jets_matchFlag_5', 'jets_matchFlag_6', 'jets_matchFlag_7', 'jets_matchFlag_8', 'jets_matchFlag_9']
-#['nMatch_wq', 'nMatch_tb', 'nMatch_hb',]
+reco_cols_additional = ['jets_btagDeepCSV_0', 'jets_btagDeepCSV_1', 'jets_btagDeepCSV_2', 'jets_btagDeepCSV_3', 'jets_btagDeepCSV_4', 'jets_btagDeepCSV_5', 'jets_btagDeepCSV_6', 'jets_btagDeepCSV_7', 'jets_btagDeepCSV_8', 'jets_btagDeepCSV_9']
 
+reco_cols_match = ['jets_matchFlag_0', 'jets_matchFlag_1', 'jets_matchFlag_2', 'jets_matchFlag_3', 'jets_matchFlag_4', 'jets_matchFlag_5', 'jets_matchFlag_6', 'jets_matchFlag_7', 'jets_matchFlag_8', 'jets_matchFlag_9', 'nMatch_wq', 'nMatch_tb', 'nMatch_hb',]
+
+def reconstruct_cartesian(data):
+    
+    jets = [["jets_pt_{0}".format(ij), "jets_eta_{0}".format(ij), "jets_phi_{0}".format(ij), "jets_mass_{0}".format(ij)] for ij in range(0,10)]
+    leps = [["leptons_pt_{0}".format(ij), "leptons_eta_{0}".format(ij), "leptons_phi_{0}".format(ij), "leptons_mass_{0}".format(ij)] for ij in range(0,2)]
+   
+    #10 * 4 = 40 components
+    lvs_jet = [] 
+    for jet in jets:
+        mm = data[jet].as_matrix()
+        lvs = np.array([p4_spherical_to_cartesian(*mm[i, :]) for i in range(mm.shape[0])])
+        lvs_jet += [lvs]
+    lvs_jet = np.hstack(lvs_jet)
+    #jets_btag = ["jets_btagDeepCSV_{0}".format(ij) for ij in range(0,9)]
+    #csvs = data[jets_btag].as_matrix()
+    #lvs_jet = np.hstack(lvs_jet + [csvs])
+    
+    #2 * 4 = 8 components
+    lvs_lep = [] 
+    for lep in leps:
+        mm = data[lep].as_matrix()
+        lvs = np.array([p4_spherical_to_cartesian(*mm[i, :]) for i in range(mm.shape[0])])
+        lvs_lep += [lvs]
+    lvs_lep = np.hstack(lvs_lep)
+    assert(lvs_lep.shape[1] == 8)
+
+    #4 components
+    lvs_met = np.zeros((mm.shape[0], 4))
+    lvs_met[:, 0] = data["met_pt"]*np.cos(data["met_phi"])
+    lvs_met[:, 1] = data["met_pt"]*np.sin(data["met_phi"])
+    assert(lvs_met.shape[1] == 4)
+    
+    #40 + 18 + 4
+    lvs_jet_lep_met = np.hstack([lvs_lep, lvs_jet, lvs_met])
+    assert(lvs_jet_lep_met.shape[1] == 52)
+
+    partons = [
+        ['top_pt', 'top_eta', 'top_phi', 'top_mass'],
+        ['atop_pt', 'atop_eta', 'atop_phi', 'atop_mass'],
+        ['bottom_pt', 'bottom_eta', 'bottom_phi', 'bottom_mass'],
+        ['abottom_pt', 'abottom_eta', 'abottom_phi', 'abottom_mass']
+    ]
+
+    lvs_parton = []
+    for parton in partons:
+        mm = data[parton].as_matrix()
+        lvs = np.array([p4_spherical_to_cartesian(*mm[i, :]) for i in range(mm.shape[0])])
+        lvs_parton += [lvs]
+    lvs_parton = np.hstack(lvs_parton)
+    assert(lvs_parton.shape[1] == 16)
+
+    return lvs_jet_lep_met, lvs_parton
 
 for fn in glob.glob("data/Jun5/*.csv".format(args.type))[:args.maxfiles]:
     data = pd.read_csv(fn, delim_whitespace=True)
@@ -64,60 +121,28 @@ for fn in glob.glob("data/Jun5/*.csv".format(args.type))[:args.maxfiles]:
         feature_cols = reco_cols
     elif args.type == "gen":
         feature_cols = gen_cols
-    print feature_cols
-    print target_cols
-    Xreco = data[reco_cols].as_matrix().astype("float32")
-    jets = [["jets_pt_{0}".format(ij), "jets_eta_{0}".format(ij), "jets_phi_{0}".format(ij), "jets_mass_{0}".format(ij)] for ij in range(0,9)]
-    leps = [["leptons_pt_{0}".format(ij), "leptons_eta_{0}".format(ij), "leptons_phi_{0}".format(ij), "leptons_mass_{0}".format(ij)] for ij in range(0,2)]
-
-    lvs_jet = [] 
-    for jet in jets:
-        mm = data[jet].as_matrix()
-        lvs = np.array([p4_spherical_to_cartesian(*mm[i, :]) for i in range(mm.shape[0])])
-        lvs_jet += [lvs]
-    jets_btag = ["jets_btagDeepCSV_{0}".format(ij) for ij in range(0,9)]
-    csvs = data[jets_btag].as_matrix()
-    lvs_jet = np.hstack(lvs_jet + [csvs])
     
-    lvs_lep = [] 
-    for lep in leps:
-        mm = data[lep].as_matrix()
-        lvs = np.array([p4_spherical_to_cartesian(*mm[i, :]) for i in range(mm.shape[0])])
-        lvs_lep += [lvs]
-    lvs_lep = np.hstack(lvs_lep)
+    if do_cartesian:
+        lvs_jet_lep_met, lvs_parton = reconstruct_cartesian(data)
+        Xsreco += [lvs_jet_lep_met]
+        Xsadditional += [data[reco_cols_additional].as_matrix().astype("float32")]
+        Xsmatch += [data[reco_cols_match].as_matrix().astype("float32")]
+        Xsparton += [lvs_parton]
+    elif do_standard:
+        Xsreco += [data[reco_cols].as_matrix().astype("float32")]
+        Xsmatch += [data[reco_cols_match].as_matrix().astype("float32")]
+        Xsparton += [data[parton_cols].as_matrix().astype("float32")]
 
-    lvs_met = np.zeros((mm.shape[0], 2))
-    lvs_met[:, 0] = data["met_pt"]*np.cos(data["met_phi"])
-    lvs_met[:, 1] = data["met_pt"]*np.sin(data["met_phi"])
-    
-    lvs_jet_lep_met = np.hstack([lvs_lep, lvs_jet, lvs_met])
-
-    partons = [
-        ['top_pt', 'top_eta', 'top_phi', 'top_mass'],
-        ['atop_pt', 'atop_eta', 'atop_phi', 'atop_mass'],
-        ['bottom_pt', 'bottom_eta', 'bottom_phi', 'bottom_mass'],
-        ['abottom_pt', 'abottom_eta', 'abottom_phi', 'abottom_mass']
-    ]
-
-    lvs_parton = []
-    for parton in partons:
-        mm = data[parton].as_matrix()
-        lvs = np.array([p4_spherical_to_cartesian(*mm[i, :]) for i in range(mm.shape[0])])
-        lvs_parton += [lvs]
-    lvs_parton = np.hstack(lvs_parton)
-
-    Xparton = data[parton_cols].as_matrix().astype("float32")
     y = data[target_cols].as_matrix().astype("float32")
-    Xsreco += [lvs_jet_lep_met]
-    Xsparton += [lvs_parton]
     ys += [y]
-    #print Xreco.shape, Xparton.shape, y.shape
 
 Xreco = np.vstack(Xsreco)
+Xadditional = np.vstack(Xsadditional)
+Xmatch = np.vstack(Xsmatch)
 Xparton = np.vstack(Xsparton)
 y = np.vstack(ys)
 
 of = open(args.output, "wb")
-print Xreco.shape, Xparton.shape, y.shape
-np.savez(of, Xreco=Xreco, Xparton=Xparton, y=y)
+print Xreco.shape, Xadditional.shape, Xmatch.shape, Xparton.shape, y.shape
+np.savez(of, Xreco=Xreco, Xparton=Xparton, Xadditiona=Xadditional, Xmatch=Xmatch, y=y)
 of.close()
