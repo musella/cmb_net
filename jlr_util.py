@@ -52,7 +52,7 @@ def on_epoch_end(epoch, logs):
     #    #    print(gradvals)
     #    logging.info("epoch_grad {0} {1} means={2} stds={3}".format(epoch, grad.name, np.mean(gradvals.flatten()), np.std(gradvals.flatten())))
     #logging.info("epoch_end {0} {1} {2} {3} {4}".format(epoch, logs["loss"], logs["val_loss"], logs["main_output_r2_score"], logs["val_main_output_r2_score"]))
-    s = " ".join(["{0}={1:.4f}".format(k,v) for k, v in logs.items()])
+    s = " ".join(["{0}={1:.4f}".format(k,v) for k, v in sorted(logs.items(), key=lambda x: x[0])])
     logging.info("epoch_end {0}".format(s))
     K.set_learning_phase(True)
 
@@ -207,7 +207,11 @@ def build_ibnet(X, nlayers, dropout, layersize, batchnorm, activation, layer_reg
             prev = keras.layers.Dropout(dropout_amount)(prev)
     
     ib_layer = keras.layers.Dense(4*4, name="ib_layer")(prev)
-    prev = ib_layer
+    aux_layer = keras.layers.Dense(128, name="aux")(prev)
+    aux_layer_act = get_activation(activation)(aux_layer)
+
+    concat = keras.layers.Concatenate()([ib_layer, aux_layer_act])
+    prev = concat
     
     for i in range(nlayers):
         if batchnorm:
