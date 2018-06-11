@@ -302,7 +302,7 @@ if __name__ == "__main__":
         plt.figure()
         plt.plot(ret.history["r2_score"][5:])
         plt.plot(ret.history["val_r2_score"][5:])
-        plt.ylim(-5,1)
+        plt.ylim(-1,1)
         plt.savefig("{0}/r2_score.pdf".format(name))
         
         plt.figure()
