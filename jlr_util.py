@@ -137,6 +137,7 @@ def input_statistics(X, name, filename):
 def build_densenet(X, nlayers, dropout, layersize, batchnorm, activation, layer_reg, reduce_layersize=True):
     mod = keras.models.Sequential()
     mod.add(keras.layers.InputLayer(input_shape=(X.shape[1], )))
+    layersize = layersize * 2
     for i in range(nlayers):
         #redue the layer size by 2 for every next layer
         if reduce_layersize:
