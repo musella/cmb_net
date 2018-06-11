@@ -1,8 +1,19 @@
+
+kfolds=5
+for ifold in $(seq 0 $(($kfolds-1)) ); do
+    opts="--kfolds $kfolds --ifold $ifold"
+    sbatch train_model.sh python ./train_model.py --epochs 50 --architecture cmb  --out-dir xval/mse_cmb_cms_had  --loss mse --inp-dir $SCRATCH/cms_tth_had $opts
+    sbatch train_model.sh python ./train_model.py --epochs 30 --architecture ffwd --out-dir xval/mse_ffwd_cms_had --loss mse --inp-dir $SCRATCH/cms_tth_had $opts
+    sbatch train_model.sh python ./train_model.py --epochs 30 --architecture cmb  --out-dir xval/mse_exp_cmb_noatt_delphes_had --no-do-attention --exp-target --loss mse --inp-dir $SCRATCH/delphes_tth_had $opts
+    sbatch train_model.sh python ./train_model.py --epochs 30 --architecture cmb  --out-dir xval/mse_exp_cmb_delphes_had_doa1  --exp-target --loss mse --inp-dir $SCRATCH/delphes_tth_had --dijet-dropout 0.,0.2,0.2  --trijet-dropout 0.,0.2,0.2 --attention-dropout 0.2,0.2 --fc-dropout 0.2,0.2 $opts
+done
+
+
 ## sbatch train_model.sh python ./train_model.py --epochs 50 --architecture cmb  --out-dir mse_exp_cmb_noatt_delphes_had --no-do-attention --exp-target --loss mse --inp-dir $SCRATCH/delphes_tth_had 
 
-sbatch train_model.sh python ./train_model.py --epochs 50 --architecture cmb  --out-dir mse_exp_cmb_rnn_delphes_had  --exp-target --loss mse --inp-dir $SCRATCH/delphes_tth_had --do-rnn 2 --dijet-rnn-units 16,16 --trijet-rnn-units 32,32 
+## sbatch train_model.sh python ./train_model.py --epochs 50 --architecture cmb  --out-dir mse_exp_cmb_rnn_delphes_had  --exp-target --loss mse --inp-dir $SCRATCH/delphes_tth_had --do-rnn 2 --dijet-rnn-units 16,16 --trijet-rnn-units 32,32 
 
-sbatch train_model.sh python ./train_model.py --epochs 50 --architecture cmb  --out-dir mse_exp_cmb_rnn_delphes_had_do  --exp-target --loss mse --inp-dir $SCRATCH/delphes_tth_had --do-rnn 2 --dijet-rnn-units 16,16 --trijet-rnn-units 32,32 --dijet-dropout 0.,0.2,0.2  --trijet-dropout 0.,0.2,0.2 --attention-dropout 0.2,0.2 --fc-dropout 0.2,0.2
+## sbatch train_model.sh python ./train_model.py --epochs 50 --architecture cmb  --out-dir mse_exp_cmb_rnn_delphes_had_do  --exp-target --loss mse --inp-dir $SCRATCH/delphes_tth_had --do-rnn 2 --dijet-rnn-units 16,16 --trijet-rnn-units 32,32 --dijet-dropout 0.,0.2,0.2  --trijet-dropout 0.,0.2,0.2 --attention-dropout 0.2,0.2 --fc-dropout 0.2,0.2
 
 ## sbatch train_model.sh python ./train_model.py --epochs 50 --architecture cmb  --out-dir mse_exp_cmb_delphes_had_doa1  --exp-target --loss mse --inp-dir $SCRATCH/delphes_tth_had --dijet-dropout 0.,0.2,0.2  --trijet-dropout 0.,0.2,0.2 --attention-dropout 0.2,0.2 --fc-dropout 0.2,0.2
 ## sbatch train_model.sh python ./train_model.py --epochs 50 --architecture cmb  --out-dir mse_exp_cmb_delphes_had_doa2  --exp-target --loss mse --inp-dir $SCRATCH/delphes_tth_had --dijet-dropout 0.,0.2,0.2  --trijet-dropout 0.,0.2,0.2 --attention-dropout 0.3,0.3 --fc-dropout 0.2,0.2

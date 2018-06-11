@@ -7,7 +7,7 @@ import json
 
 from pprint import pprint
 
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold
 
 from optparse import OptionParser, make_option, OptionGroup
 
@@ -28,18 +28,24 @@ parser = OptionParser(option_list=[
     make_option("--loss",type='string',dest="loss",default="mse"),
     make_option("--loss-params",type='string',dest="loss_params",default=dict()),
     
+    make_option("--test-frac",type='float',dest='test_frac',default=0.1),
     make_option("--valid-frac",type='float',dest='valid_frac',default=0.1),
+    
     make_option("--batch-size",type='int',dest='batch_size',default=512),
     make_option("--epochs",type='int',dest='epochs',default=100),
     
     make_option("--hparams",type='string',dest='hparams',default=None),
-    make_option("--seed",type='int',dest='seed',default=98543),
+    make_option("--seed",type='int',dest='seed',default=873462),
     
     make_option("--architecture",type='string',dest='architecture',default="cmb"),
     make_option("--features",type='string',dest='features',default="jets"),
 
     make_option("--output-activation",type='string',dest='output_activation',default=None),
     make_option("--optimizer-params",type="string",dest="optimizer_params=",default=dict(lr=1.e-6,decay=2e-5)),#default=dict(lr=1.e-5,decay=2e-5)),
+    
+    make_option("--kfolds",type="int",dest="kfolds",default=None),
+    make_option("--ifold",type="int",dest="ifold",default=None),
+    make_option("--fold-seed",type='int',dest='fold_seed',default=123767),
 ])
 
 ffwd_opts = [    ## FFWD network 
@@ -105,7 +111,10 @@ for grp,name in zip([ffwd_opts,cmb_opts],["ffwd network options","cmb network op
 import pyjlr.cmb as cmb
 import pyjlr.ffwd as ffwd
 
-
+if options.kfolds is not None:
+    if not os.path.exists(options.out_dir):
+        os.mkdir(options.out_dir)
+    options.out_dir += "/fold_%d_%d" % (options.kfolds, options.ifold)
 
 hparams = {}
 if options.hparams is not None:
@@ -196,8 +205,26 @@ with open(options.out_dir+'/config.json','w+') as fo:
 
 
 # split data
-## X_train,X_valid,y_train,y_valid = train_test_split(X,y,test_size=options.valid_frac,random_state=options.seed)
-split = train_test_split(*X,y,test_size=options.valid_frac,random_state=options.seed)
+# keep test sample aside
+split = train_test_split(*X,y,test_size=options.test_frac,random_state=options.seed)
+split = [ split[ix] for ix in range(0,len(split),2) ]
+for x in split:
+    print(x.shape)
+
+# split train/validation sample
+if options.kfolds is None:
+    split = train_test_split(*split,test_size=options.valid_frac,random_state=options.fold_seed)
+else:
+    kf = KFold(n_splits=int(1./options.valid_frac),shuffle=True,random_state=options.fold_seed) 
+    folds = iter(kf.split(split[-1]))
+    for fold in range(options.ifold-1): next(folds)
+    train_idx, valid_idx = next(folds)
+    isplit = []
+    for x in split:
+        isplit += [ x[train_idx],x[valid_idx]  ]
+    split = isplit
+    
+# collect X and y
 if len(split) == 4:
     X_train, X_valid, y_train, y_valid = split
 else:
@@ -208,7 +235,7 @@ else:
     while len(X_split) > 0:
         X_train.append( X_split.pop(0) )
         X_valid.append( X_split.pop(0) )
-
+    
 # ok we can start training
 reg.fit(X_train,y_train,
         validation_data=(X_valid,y_valid),
