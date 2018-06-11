@@ -53,28 +53,43 @@ ffwd_opts = [    ## FFWD network
 
 cmb_opts = [
     ## CMB network 
+    make_option("--jets-dropout",type="float",action="store",dest="jets_dropout",default=None),
+    
     make_option("--dijet-layers",type="string",action="store",dest="dijet_layers",default=[64,32,16]),
     make_option("--dijet-dropout",type="string",action="store",dest="dijet_dropout",default=None),
+    make_option("--dijet-noise",type="string",action="store",dest="dijet_noise",default=None),
     make_option("--dijet-activations",type="string",action="store",dest="dijet_activations",default="relu"),
     
     make_option("--trijet-layers",type="string",action="store",dest="trijet_layers",default=[128,64,32]),
     make_option("--trijet-dropout",type="string",action="store",dest="trijet_dropout",default=None),
+    make_option("--trijet-noise",type="string",action="store",dest="trijet_noise",default=None),
     make_option("--trijet-activations",type="string",action="store",dest="trijet_activations",default="relu"),
+
+    make_option("--do-rnn",action="store",type="int",dest="do_rnn",default=False),
+    make_option("--dijet-rnn-units",action="store",type="string",dest="dijet_rnn_units",default=None),
+    make_option("--trijet-rnn-units",action="store",type="string",dest="trijet_rnn_units",default=None),
     
+    make_option("--do-attention",action="store_true",dest="do_attention",default=True),
+    make_option("--no-do-attention",action="store_false",dest="do_attention"),
+        
     make_option("--dijet-attention-layers",type="string",action="store",dest="dijet_attention_layers",default=[8,4]),
     make_option("--dijet-attention-dropout",type="string",action="store",dest="dijet_attention_dropout",default=None),
+    make_option("--dijet-attention-noise",type="string",action="store",dest="dijet_attention_noise",default=None),
     make_option("--dijet-attention-activations",type="string",action="store",dest="dijet_attention_activations",default="relu"),
     
     make_option("--trijet-attention-layers",type="string",action="store",dest="trijet_attention_layers",default=[8,4]),
     make_option("--trijet-attention-dropout",type="string",action="store",dest="trijet_attention_dropout",default=None),
+    make_option("--trijet-attention-noise",type="string",action="store",dest="trijet_attention_noise",default=None),
     make_option("--trijet-attention-activations",type="string",action="store",dest="trijet_attention_activations",default="relu"),
     
     make_option("--attention-layers",type="string",action="store",dest="attention_layers",default=[128,64]),
-    make_option("--attention-dropout",type="string",action="store",dest="attention_dropout",default=None),
+    make_option("--attention-noise",type="string",action="store",dest="attention_noise",default=None),
     make_option("--attention-activations",type="string",action="store",dest="attention_activations",default="relu"),
+    make_option("--attention-dropout",type="string",action="store",dest="attention_dropout",default=None),
     
     make_option("--fc-layers",type="string",action="store",dest="fc_layers",default=[128,64]),
     make_option("--fc-dropout",type="string",action="store",dest="fc_dropout",default=None),
+    make_option("--fc-noise",type="string",action="store",dest="fc_noise",default=None),
     make_option("--fc-activations",type="string",action="store",dest="fc_activations",default="relu"),
 ]
 
