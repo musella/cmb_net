@@ -15,6 +15,7 @@ from keras import backend as K
 from matplotlib.colors import LogNorm
 
 from jlr_util import build_ibnet, build_densenet, loss_function_ratio_regression, load_data, input_statistics, r2_score, on_epoch_end, loss_function_p4, build_parton_net
+from jlr_util import neg_r2_score
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -111,6 +112,11 @@ if __name__ == "__main__":
         help="Normalize and standardize inputs"
     )
     parser.add_argument(
+        "--do_normtarget",
+        action="store_true",
+        help="Normalize and standardize target"
+    )
+    parser.add_argument(
         "--do_weight",
         action="store_true",
         help="Reweight target distribution to be flat"
@@ -144,7 +150,7 @@ if __name__ == "__main__":
     set_random_seed(args.seed)
     
     #create a unique name for the training
-    name = "tr_{model}_l{layers}x{layersize}_d{dropout:.2f}_{activation}_lr{lr:.7f}_bn{batchnorm}_dn{do_norm}_w{do_weight}_{inp}_{ntrain}_{ntest}_cn{clipnorm:.2f}_reg{layer_reg:.2E}_b{batch_size}_s{seed}_{match}".format(
+    name = "tr_{model}_l{layers}x{layersize}_d{dropout:.2f}_{activation}_lr{lr:.7f}_bn{batchnorm}_dn{do_norm}_w{do_weight}_{inp}_{ntrain}_{ntest}_cn{clipnorm:.2f}_reg{layer_reg:.2E}_b{batch_size}_s{seed}_m{match}_tgt{logtarget}{normtarget}".format(
         model=args.model,
         layers=args.layers, layersize=args.layersize,
         dropout=args.dropout, activation=args.activation,
@@ -155,8 +161,11 @@ if __name__ == "__main__":
         clipnorm=args.clipnorm, layer_reg=args.layer_reg,
         batch_size=args.batch_size,
         seed=args.seed,
-        match=int(args.add_match)
+        match=int(args.add_match),
+        logtarget=int(args.do_logtarget),
+        normtarget=int(args.do_normtarget),
     )
+
     os.makedirs(name)
     logging.basicConfig(
         format='%(asctime)s %(name)s %(message)s',
@@ -178,6 +187,10 @@ if __name__ == "__main__":
     c, b = np.histogram(y, bins=ybins)
     ib = np.searchsorted(b, y)
     
+    if args.do_logtarget:
+        y = np.exp(y)
+        y = np.exp(-y)
+    
     #compute sample weights for target to be flat
     w = np.ones(X.shape[0])
     if args.do_weight:
@@ -185,6 +198,7 @@ if __name__ == "__main__":
         w = 100.0/w
         w[np.isinf(w)] = 0.0
         w[np.isnan(w)] = 0.0
+    
     
     #normalize the inputs
     if args.do_norm:
@@ -196,10 +210,12 @@ if __name__ == "__main__":
             X[:, i] = (X[:, i] - means[i])/stds[i]
         X[~np.isfinite(X)] = 0.0
     
+    if args.do_normtarget:
         #don't want to normalize y as that changes the loss function value
-        #mean = np.mean(y)
-        #std = np.std(y)
-        #y = (y-mean)/std
+        mean = np.mean(y)
+        std = np.std(y)
+        y = (y-mean)/std
+    
     
     logging.info("y mean={0:.4f} std={1:.4f} min={2:.4f} max={3:.4f}".format(
         np.mean(y),
@@ -212,12 +228,16 @@ if __name__ == "__main__":
     if args.do_varplots:
         for ix in range(X.shape[1]):
             plt.figure()
-            plt.hist(X[:, ix], bins=100)
-            plt.savefig("{0}/src_{1}.pdf".format(name, ix), weights=w)
+            plt.hist(X[:, ix], bins=100, weights=w)
+            plt.savefig("{0}/src_{1}.pdf".format(name, ix))
             
             plt.figure()
-            plt.hexbin(X[:, ix], y[:], bins=100, norm=LogNorm(1, X.shape[0]))
-            plt.savefig("{0}/src_tgt_{1}.pdf".format(name, ix), weights=w)
+            plt.hexbin(X[:, ix], y[:], bins=100, norm=LogNorm(1, X.shape[0]), weights=w)
+            plt.savefig("{0}/src_tgt_{1}.pdf".format(name, ix))
+            
+    plt.figure()
+    plt.hist(y, bins=100, weights=w)
+    plt.savefig("{0}/target.pdf".format(name))
 
     #choose test and training events
     if args.ntrain == 0 and args.ntest == 0:
@@ -262,9 +282,19 @@ if __name__ == "__main__":
     
         callbacks += [es, logging_callback]
         mod = build_densenet(X, args.layers, args.dropout, args.layersize, args.batchnorm, args.activation, args.layer_reg)
-        mod.compile(loss=loss_function_ratio_regression, optimizer=opt, metrics=[r2_score])
+        #mod.compile(loss=loss_function_ratio_regression, optimizer=opt, metrics=[r2_score])
+        mod.compile(loss=neg_r2_score, optimizer=opt, metrics=[r2_score])
         mod.summary()
-        ret = mod.fit(X_train, y_train, sample_weight=w_train, batch_size=args.batch_size, validation_data=(X_test, y_test, w_test), epochs=args.epochs, callbacks=callbacks, verbose=args.verbosity)
+        ret = mod.fit(
+            X_train,
+            y_train,
+            sample_weight=w_train,
+            batch_size=args.batch_size,
+            validation_data=(X_test, y_test, w_test),
+            epochs=args.epochs,
+            callbacks=callbacks,
+            verbose=args.verbosity
+        )
     
         K.set_learning_phase(False)
         
@@ -273,6 +303,20 @@ if __name__ == "__main__":
         plt.plot(ret.history["val_r2_score"][5:])
         plt.ylim(-5,1)
         plt.savefig("{0}/r2_score.pdf".format(name))
+        
+        plt.figure()
+        plt.plot(ret.history["loss"][5:])
+        plt.plot(ret.history["val_loss"][5:])
+        plt.savefig("{0}/loss.pdf".format(name))
+       
+        y_pred = mod.predict(X_test)
+        plt.figure(figsize=(5,4))
+        plt.hexbin(y_test, y_pred[:, 0], bins="log", gridsize=40, cmap="jet")
+        plt.colorbar()
+        plt.xlabel("true JLR")
+        plt.ylabel("pred JLR")
+        plt.title("r2={0:.3f}".format(sklearn.metrics.r2_score(y_test, y_pred[:, 0])))
+        plt.savefig("{0}/pred.pdf".format(name))
     
     def model_ibnet(X_train, X_test, Xparton_train, Xparton_test, y_train, y_test, w_train, w_test, args):
         opt = keras.optimizers.Adam(lr=args.lr, clipnorm=args.clipnorm)

@@ -17,6 +17,8 @@ def r2_score(y_true, y_pred):
     SS_tot = K.sum(K.square( y_true - K.mean(y_true) ) )
     return ( 1 - SS_res/(SS_tot + K.epsilon()) )
 
+def neg_r2_score(y_true, y_pred):
+    return -r2_score(y_true, y_pred)
 def on_epoch_end(epoch, logs):
     K.set_learning_phase(False)
     #get layer weight statistics
@@ -76,16 +78,17 @@ def load_data(infile):
     #load the input data
     inf = open(infile, "rb")
     data = np.load(inf)
-    Xreco = data["Xreco"]
+    Xreco = data["X_reco"]
+    Xcart = data["X_cart"]
+    Xparton_cart = data["X_parton_cart"]
     #Xadditional = data["Xadditional"]
-    Xmatch = data["Xmatch"]
-    Xparton = data["Xparton"]
+    Xmatch = data["X_match"]
     
     #shuffle the input data
     shuf = np.random.permutation(range(Xreco.shape[0]))
     logging.info("Xreco={0}".format(Xreco[:5]))
     Xreco = Xreco[shuf]
-    Xparton = Xparton[shuf]
+    Xparton_cart = Xparton_cart[shuf]
     Xmatch = Xmatch[shuf]
     #Xadditional = Xadditional[shuf]
     y = data["y"][:, -1][shuf]
@@ -95,11 +98,11 @@ def load_data(infile):
     cut = np.isfinite(y)
     logging.info("applying cut to be finite, passed {0}/{1}".format(np.sum(cut), y.shape[0]))
     Xreco = Xreco[cut]
-    Xparton = Xparton[cut]
+    Xparton_cart = Xparton_cart[cut]
     #Xadditional = Xadditional[cut]
     Xmatch = Xmatch[cut]
     y = y[cut]
-    return Xreco, Xmatch, Xparton, y
+    return Xreco, Xmatch, Xparton_cart, y
 
 def input_statistics(X, name, filename):
     ixs = []
@@ -137,7 +140,7 @@ def build_densenet(X, nlayers, dropout, layersize, batchnorm, activation, layer_
     for i in range(nlayers):
         #redue the layer size by 2 for every next layer
         if reduce_layersize:
-            layersize = int(layersize / pow(2, i))
+            layersize = int(layersize / 2)
     
         if batchnorm:
             mod.add(keras.layers.BatchNormalization())
