@@ -74,7 +74,7 @@ def get_activation(activation):
     else:
         raise Exception("Unknown activation: {0}".format(activation))
 
-def load_data(infile):
+def load_data(infile, require_finite=True):
     #load the input data
     inf = open(infile, "rb")
     data = np.load(inf)
@@ -92,8 +92,9 @@ def load_data(infile):
     Xmatch = Xmatch[shuf]
     #Xadditional = Xadditional[shuf]
     y = data["y"][:, -1][shuf]
-    
-    logging.info("y={0}".format(y[:5]))
+   
+    if require_finite:
+        logging.info("y={0}".format(y[:5]))
     
     cut = np.isfinite(y)
     logging.info("applying cut to be finite, passed {0}/{1}".format(np.sum(cut), y.shape[0]))
@@ -103,6 +104,23 @@ def load_data(infile):
     Xmatch = Xmatch[cut]
     y = y[cut]
     return Xreco, Xmatch, Xparton_cart, y
+
+def norm_data(X, y, norminput, normtarget):
+    if norminput:
+        means = np.mean(X, axis=0)
+        stds = np.std(X, axis=0)
+        logging.info("means={0}".format(means))
+        logging.info("stds={0}".format(stds))
+        for i in range(X.shape[1]):
+            X[:, i] = (X[:, i] - means[i])/stds[i]
+        X[~np.isfinite(X)] = 0.0
+
+    if normtarget:
+        mean = np.mean(y)
+        std = np.std(y)
+        y = (y-mean)/std
+
+    return X, y
 
 def input_statistics(X, name, filename):
     ixs = []
@@ -211,7 +229,7 @@ def build_ibnet(X, nlayers, dropout, layersize, batchnorm, activation, layer_reg
             prev = keras.layers.Dropout(dropout_amount)(prev)
     
     ib_layer = keras.layers.Dense(4*4, name="ib_layer")(prev)
-    aux_layer = keras.layers.Dense(128, name="aux")(prev)
+    aux_layer = keras.layers.Dense(8, name="aux")(prev)
     aux_layer_act = get_activation(activation)(aux_layer)
 
     concat = keras.layers.Concatenate()([ib_layer, aux_layer_act])

@@ -316,7 +316,7 @@ if __name__ == "__main__":
         plt.colorbar()
         plt.xlabel("true JLR")
         plt.ylabel("pred JLR")
-        plt.title("r2={0:.3f}".format(sklearn.metrics.r2_score(y_test, y_pred[:, 0])))
+        #plt.title("r2={0:.3f}".format(r2_score(y_test, y_pred[:, 0])))
         plt.savefig("{0}/pred.pdf".format(name))
     
     def model_ibnet(X_train, X_test, Xparton_train, Xparton_test, y_train, y_test, w_train, w_test, args):
@@ -336,11 +336,25 @@ if __name__ == "__main__":
         callbacks += [es, logging_callback]
         
         mod = build_ibnet(X, args.layers, args.dropout, args.layersize, args.batchnorm, args.activation, args.layer_reg)
-        mod.compile(loss={"main_output": loss_function_ratio_regression, "ib_layer": loss_function_p4}, optimizer=opt, metrics=[r2_score], loss_weights={"main_output": 100.0, "ib_layer": 0.01})
+        mod.compile(loss={"main_output": neg_r2_score, "ib_layer": loss_function_p4}, optimizer=opt, metrics=[r2_score], loss_weights={"main_output": 1.0, "ib_layer": 0.01})
         mod.summary()
         ret = mod.fit(X_train, [y_train, Xparton_train], sample_weight=[w_train, w_train], batch_size=args.batch_size, validation_data=(X_test, [y_test, Xparton_test], [w_test, w_test]), epochs=args.epochs, callbacks=callbacks, verbose=args.verbosity)
         
         K.set_learning_phase(False)
+        
+        plt.figure()
+        plt.plot(ret.history["loss"][5:])
+        plt.plot(ret.history["val_loss"][5:])
+        plt.savefig("{0}/loss.pdf".format(name))
+       
+        y_pred = mod.predict(X_test)[0]
+        plt.figure(figsize=(5,4))
+        plt.hexbin(y_test, y_pred[:, 0], bins="log", gridsize=40, cmap="jet")
+        plt.colorbar()
+        plt.xlabel("true JLR")
+        plt.ylabel("pred JLR")
+        #plt.title("r2={0:.3f}".format(r2_score(y_test, y_pred[:, 0])))
+        plt.savefig("{0}/pred.pdf".format(name))
         
         plt.figure()
         plt.plot(ret.history["main_output_r2_score"][5:])
