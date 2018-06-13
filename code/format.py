@@ -33,6 +33,7 @@ if __name__ == "__main__":
         nleps = 2,
         met_feats = ["phi","pt","sumEt","px","py"],
         truth_feats = ["pt","eta","phi","en","px","py","pz"],
+        evdesc_feats = ["num_leptons", "num_jets"],
     )
     
     # options for delphes files, full hadronic selection
@@ -67,7 +68,8 @@ if __name__ == "__main__":
         outdir = args.outdir + '/cms_tth_1l',
         selection = 'num_leptons == 1',
         jet_feats = ["pt","eta","phi","en","px","py","pz","btagDeepCSV"],
-        nleps = 1
+        nleps = 1,
+        evdesc_feats = ["num_leptons", "num_jets", "nBDeepCSVM", "nMatch_wq", "nMatch_tb", "nMatch_hb"],
     )
     
     # options for cms files, 1l selection
@@ -76,7 +78,8 @@ if __name__ == "__main__":
         outdir = args.outdir + '/cms_ttjets_1l',
         selection = 'num_leptons == 1',
         jet_feats = ["pt","eta","phi","en","px","py","pz","btagDeepCSV"],
-        nleps = 1
+        nleps = 1,
+        evdesc_feats = ["num_leptons", "num_jets", "nBDeepCSVM", "nMatch_wq", "nMatch_tb", "nMatch_hb"],
     )
     
     
@@ -235,6 +238,13 @@ if __name__ == "__main__":
     print('making MEM...')
     jlra = df[["mem_tth", "mem_ttbb", "mem_ratio"]].values
     np.save(outdir+"/mem",jlra)
+    print('done')
+    
+    # --------------------------------------------------------------------------------------------------------------
+    # Event description features
+    print('making evdesc...')
+    jlra = df[evdesc_feats].values
+    np.save(outdir+"/evdesc",jlra)
     print('done')
     
     # --------------------------------------------------------------------------------------------------------------
