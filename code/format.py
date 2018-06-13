@@ -82,9 +82,9 @@ if __name__ == "__main__":
     )
     
     # choose = delphes_tth_had
-    choose = cms_tth_had
+    # choose = cms_tth_had
     # choose = delphes_tth_1l
-    # choose = cms_tth_1l
+    choose = cms_tth_1l
     # choose = delphes_tth_2l
     # choose = delphes_tth_2l
     
@@ -95,8 +95,10 @@ if __name__ == "__main__":
     # copy default values to globals
     globals().update(opts)
     
+    print("loading hdf file {0}".format(inpfile))
     df = pd.read_hdf(inpfile)
-    
+    print("df.shape={0}".format(df.shape))
+
     if selection is not None:
         df = df.query(selection)
     

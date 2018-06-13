@@ -134,7 +134,7 @@ if options.exp_target:
 
 y_mean = np.median(y)
 y_std = y.std()
-print(y_mean,y_std)
+print("target mean,std", y_mean,y_std)
 
 # normalize target
 if options.loss == "binary_crossentropy":
