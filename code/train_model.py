@@ -240,7 +240,12 @@ else:
     while len(X_split) > 0:
         X_train.append( X_split.pop(0) )
         X_valid.append( X_split.pop(0) )
-    
+
+#save options as json
+of = open(options.out_dir + "/options.json", "w")
+of.write(json.dumps(options.__dict__, indent=2))
+of.close()
+
 # ok we can start training
 reg.fit(X_train,y_train,
         validation_data=(X_valid,y_valid),
