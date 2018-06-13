@@ -4,11 +4,18 @@ import glob
 import numpy as np
 import argparse
 import ROOT
+import os
 
 def load_df(folder, maxfiles):
-    files = glob.glob(folder+'/*.csv')[:maxfiles]
+    files = sorted(glob.glob(folder+'/*.csv'))[:maxfiles]
     print("loading", files)
     df = pd.concat([pd.read_csv(x,sep=" ",index_col=False) for x in files])
+    return df
+
+def load_mem_df(folder, maxfiles):
+    files = sorted(glob.glob(folder+'/mem/*.csv'))[:maxfiles]
+    print("loading", files)
+    df = pd.concat([pd.read_csv(x,sep=",",index_col=0) for x in files])
     return df
 
 def make_p4(df,collection,iob):
@@ -68,6 +75,16 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     df = load_df(args.input, args.maxfiles)
+    if os.path.isdir(args.input + "/mem"):
+        df_mem = load_mem_df(args.input, args.maxfiles)
+        assert(df.shape[0] == df_mem.shape[0])
+        df = pd.concat([df, df_mem], axis=1)
+    else:
+        print("could not find the {0}/mem directory, setting to 0".format(args.input))
+        df["mem_ratio"] = 0.0
+        df["mem_ttbb"] = 0.0
+        df["mem_tth"] = 0.0
+    print(df.columns)
 
     for ilep in range(2):
         make_p4(df,'leptons',ilep)

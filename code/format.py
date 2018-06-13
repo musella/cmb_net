@@ -16,6 +16,12 @@ if __name__ == "__main__":
         required=True, action="store",
         help="input folder"
     )
+    parser.add_argument(
+        "--datatype", type=str,
+        choices=["cms_tth_had", "cms_tth_1l", "cms_tth_2l", "cms_ttjets_1l", "delphes_tth_had", "delphes_tth_1l", "delphes_tth_2l"], action="store",
+        required=True,
+        help="datatype choice"
+    )
     
     args = parser.parse_args()
     
@@ -64,6 +70,15 @@ if __name__ == "__main__":
         nleps = 1
     )
     
+    # options for cms files, 1l selection
+    cms_ttjets_1l = dict(
+        inpfile = args.infile,
+        outdir = args.outdir + '/cms_ttjets_1l',
+        selection = 'num_leptons == 1',
+        jet_feats = ["pt","eta","phi","en","px","py","pz","btagDeepCSV"],
+        nleps = 1
+    )
+    
     
     # options for delphes files, 2l selection
     delphes_tth_2l = dict(
@@ -80,14 +95,14 @@ if __name__ == "__main__":
         selection = 'num_leptons > 1',
         jet_feats = ["pt","eta","phi","en","px","py","pz","btagDeepCSV"],
     )
-    
-    # choose = delphes_tth_had
-    # choose = cms_tth_had
-    # choose = delphes_tth_1l
-    choose = cms_tth_1l
-    # choose = delphes_tth_2l
-    # choose = delphes_tth_2l
-    
+   
+    datatype_choices = {
+        "cms_tth_had": cms_tth_had,
+        "cms_tth_1l": cms_tth_1l,
+        "cms_tth_2l": cms_tth_2l,
+        "cms_ttjets_1l": cms_ttjets_1l,
+    }
+    choose = datatype_choices[args.datatype]
     
     # copy specfic options
     opts.update(choose)
@@ -212,6 +227,14 @@ if __name__ == "__main__":
     print('making target...')
     jlra = df["JLR"].values
     np.save(outdir+"/target",jlra)
+    print('done')
+    
+    
+    # --------------------------------------------------------------------------------------------------------------
+    # MEM
+    print('making MEM...')
+    jlra = df[["mem_tth", "mem_ttbb", "mem_ratio"]].values
+    np.save(outdir+"/mem",jlra)
     print('done')
     
     # --------------------------------------------------------------------------------------------------------------
