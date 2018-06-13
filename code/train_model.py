@@ -108,6 +108,11 @@ for grp,name in zip([ffwd_opts,cmb_opts],["ffwd network options","cmb network op
 ## parse options
 (options, args) = parser.parse_args()
 
+#convert layer string to list of layer sizes
+if isinstance(options.layers, str):
+    options.layers = [int(x) for x in options.layers.split(",")]
+
+
 import pyjlr.cmb as cmb
 import pyjlr.ffwd as ffwd
 
