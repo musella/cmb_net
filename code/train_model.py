@@ -211,7 +211,8 @@ with open(options.out_dir+'/config.json','w+') as fo:
 
 # split data
 # keep test sample aside
-split = train_test_split(*X,y,test_size=options.test_frac,random_state=options.seed)
+split_inds = np.arange(0, y.shape[0]) #to keep track of which event was splitted to which set
+split = train_test_split(split_inds, *X,y,test_size=options.test_frac,random_state=options.seed)
 split = [ split[ix] for ix in range(0,len(split),2) ]
 for x in split:
     print(x.shape)
@@ -230,16 +231,21 @@ else:
     split = isplit
     
 # collect X and y
-if len(split) == 4:
-    X_train, X_valid, y_train, y_valid = split
+if len(split) == 6:
+    inds_train, inds_valid, X_train, X_valid, y_train, y_valid = split
 else:
+    inds_train, inds_valid = split[:2]
     y_train, y_valid = split[-2:]
-    X_split = split[:-2]
+    X_split = split[2:-2]
     X_train = []
     X_valid = []
     while len(X_split) > 0:
         X_train.append( X_split.pop(0) )
         X_valid.append( X_split.pop(0) )
+
+#save the indices of the events used for training and validation
+np.save(options.out_dir+"/idx_valid", inds_valid)
+np.save(options.out_dir+"/idx_train", inds_train)
 
 #save options as json
 of = open(options.out_dir + "/options.json", "w")
@@ -250,3 +256,8 @@ of.close()
 reg.fit(X_train,y_train,
         validation_data=(X_valid,y_valid),
         **fit_kwargs)
+
+#save prediction values
+pred = reg.predict(X)
+print("pred shape {0}, saving to {1}".format(pred.shape, options.out_dir + "/pred.npy"))
+np.save(options.out_dir+"/pred", pred)
