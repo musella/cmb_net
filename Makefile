@@ -1,28 +1,12 @@
-
 OUTPATH=/scratch/${USER}/jlr
 
-ttjets_1l:
-	python code/data_prep.py --input data/cmssw/ttjets_sl/ --output /scratch/${USER}/jlr/ttjets_sl_cms.h5 --maxfiles 200
-	rm -Rf ${OUTPATH}/numpy/cms_ttjets_1l
-	python code/format.py --infile ${OUTPATH}/ttjets_sl_cms.h5 --outdir ${OUTPATH}/numpy --datatype cms_ttjets_1l
+tth:
+	python code/data_prep.py --input /pnfs/psi.ch/cms/trivcat/store/user/jpata/tth/meanalysis/GC92b6146ce278/ttHTobb_M125_TuneCP5_13TeV-powheg-pythia8/ --output ${OUTPATH}/tth.h5
+	rm -Rf ${OUTPATH}/numpy/cms_tth_1l
+	python code/format.py --infile ${OUTPATH}/tth.h5 --outdir ${OUTPATH}/numpy/cms_tth_1l --datatype cms_1l
+	rm -Rf ${OUTPATH}/numpy/cms_tth_2l
+	python code/format.py --infile ${OUTPATH}/tth.h5 --outdir ${OUTPATH}/numpy/cms_tth_2l --datatype cms_2l
+	rm -Rf ${OUTPATH}/numpy/cms_tth_0l
+	python code/format.py --infile ${OUTPATH}/tth.h5 --outdir ${OUTPATH}/numpy/cms_tth_0l --datatype cms_0l
 
-tth_1l:
-	#python code/data_prep.py --input data/cmssw/tth/ --output /scratch/${USER}/jlr/tth_cms.h5 --maxfiles -1
-	rm -Rf ${OUTPATH}/cms_tth_1l
-	python code/format.py --infile ${OUTPATH}/tth_cms.h5 --outdir ${OUTPATH}/numpy --datatype cms_tth_1l
-
-#data:
-#	mkdir -p /scratch/${USER}/jlr
-#	python code/data_prep.py --input data/cmssw/tth/ --output /scratch/${USER}/jlr/tth_cms.h5 --maxfiles -1
-#	#python code/data_prep.py --input data/cmssw/ttjets_sl/ --output /scratch/${USER}/jlr/ttjets_sl_cms.h5 --maxfiles 100
-#	#python code/data_prep.py --input data/delphes/tth/ --output /scratch/${USER}/jlr/tth_delphes.h5 --maxfiles 100
-#	#python code/data_prep.py --input data/delphes/ttbb/ --output /scratch/${USER}/jlr/ttbb_delphes.h5 --maxfiles 100
-#
-#numpy: data
-#	mkdir -p /scratch/${USER}/jlr/numpy
-#	rm -Rf /scratch/${USER}/jlr/numpy/cms_tth_1l
-#	python code/format.py --infile /scratch/${USER}/jlr/tth_cms.h5 --outdir /scratch/${USER}/jlr/numpy --datatype cms_tth_1l
-#	#python code/format.py --infile /scratch/${USER}/jlr/tth_cms.h5 --outdir /scratch/${USER}/jlr/numpy --datatype cms_tth_2l
-#	#python code/format.py --infile /scratch/${USER}/jlr/tth_cms.h5 --outdir /scratch/${USER}/jlr/numpy --datatype cms_tth_had
-
-.PHONY: ttjets_sl tth_1l
+.PHONY: tth

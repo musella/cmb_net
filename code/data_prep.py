@@ -8,11 +8,12 @@ import os
 import root_numpy
 
 def load_df(folder):
-    files = sorted(glob.glob(folder+'/*.root'))
+    files = sorted(glob.glob(folder+'/*flat*.root'))
     
     #in case we are trying to load from T3, add prefix
     files = [fi.replace("/pnfs/psi.ch", "root://t3dcachedb.psi.ch/pnfs/psi.ch") for fi in files]
-
+    for fi in files:
+        print(fi)
     df = pd.DataFrame(root_numpy.root2array(files))
     df["JointLikelihoodRatioLog"] = np.log10(df["JointLikelihoodRatio"])
     return df
