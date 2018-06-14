@@ -1,5 +1,14 @@
+#!/usr/bin/env python
 """Flattens a structured ROOT TTree with branches like jets_pt, jets_eta
 into a dataframe-like TTree with scalar branches like jets_pt_0, jets_pt_1, ...
+
+Usage example:
+
+flattener.py --infile input.root --intree tree \
+    --outfile test.root --outtree tree \
+    -f jets:njets:pt,eta,phi:10 \
+    -f leps:nleps:pt,eta,phi,mass,pdgId:2 \
+    -b met_pt -b met_phi
 """
 from __future__ import print_function
 
@@ -163,7 +172,19 @@ def flatten_tree(intree, outfile, outname, flatten_commands, scalar_commands):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=
+"""
+Flattens a structured ROOT TTree with branches like jets_pt, jets_eta
+into a dataframe-like TTree with scalar branches like jets_pt_0, jets_pt_1, ...
+
+Usage example:
+
+flattener.py --infile input.root --intree tree \
+    --outfile test.root --outtree tree \
+    -f jets:njets:pt,eta,phi:10 \
+    -f leps:nleps:pt,eta,phi,mass,pdgId:2 \
+    -b met_pt -b met_phi
+""")
     parser.add_argument(
         "--infile", type=str,
         required=True, action="store",
