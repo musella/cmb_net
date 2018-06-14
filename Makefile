@@ -2,7 +2,7 @@
 OUTPATH=/scratch/${USER}/jlr
 
 ttjets_1l:
-	#python code/data_prep.py --input data/cmssw/ttjets_sl/ --output /scratch/${USER}/jlr/ttjets_sl_cms.h5 --maxfiles 100
+	python code/data_prep.py --input data/cmssw/ttjets_sl/ --output /scratch/${USER}/jlr/ttjets_sl_cms.h5 --maxfiles 200
 	rm -Rf ${OUTPATH}/numpy/cms_ttjets_1l
 	python code/format.py --infile ${OUTPATH}/ttjets_sl_cms.h5 --outdir ${OUTPATH}/numpy --datatype cms_ttjets_1l
 
