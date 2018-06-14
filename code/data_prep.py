@@ -5,17 +5,16 @@ import numpy as np
 import argparse
 import ROOT
 import os
+import root_numpy
 
-def load_df(folder, maxfiles):
-    files = sorted(glob.glob(folder+'/*.csv'))[:maxfiles]
-    print("loading", files)
-    df = pd.concat([pd.read_csv(x,sep=" ",index_col=False) for x in files])
-    return df
+def load_df(folder):
+    files = sorted(glob.glob(folder+'/*.root'))
+    
+    #in case we are trying to load from T3, add prefix
+    files = [fi.replace("/pnfs/psi.ch", "root://t3dcachedb.psi.ch/pnfs/psi.ch")]
 
-def load_mem_df(folder, maxfiles):
-    files = sorted(glob.glob(folder+'/mem/*.csv'))[:maxfiles]
-    print("loading", files)
-    df = pd.concat([pd.read_csv(x,sep=",",index_col=0) for x in files])
+    df = pd.DataFrame(root_numpy.root2array(files))
+    df["JointLikelihoodRatioLog"] = np.log10(df["JointLikelihoodRatio"])
     return df
 
 def make_p4(df,collection,iob):
@@ -58,7 +57,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--output", type=str,
-        default="jlr_data.npz", action="store",
+        default="data.h5", action="store",
         help="output file"
     )
     parser.add_argument(
@@ -66,41 +65,29 @@ if __name__ == "__main__":
         required=True, action="store",
         help="input folder"
     )
-    parser.add_argument(
-        "--maxfiles", type=int,
-        default=-1, action="store",
-        help="max files to process"
-    )
     
     args = parser.parse_args()
 
-    df = load_df(args.input, args.maxfiles)
-    if os.path.isdir(args.input + "/mem"):
-        df_mem = load_mem_df(args.input, args.maxfiles)
-        assert(df.shape[0] == df_mem.shape[0])
-        df = pd.concat([df, df_mem], axis=1)
-    else:
-        print("could not find the {0}/mem directory, setting to 0".format(args.input))
-        df["mem_ratio"] = 0.0
-        df["mem_ttbb"] = 0.0
-        df["mem_tth"] = 0.0
+    df = load_df(args.input)
     print(df.columns)
 
     for ilep in range(2):
-        make_p4(df,'leptons',ilep)
+        make_p4(df,'leps',ilep)
 
     for ijet in range(10):
         make_p4(df,'jets',ijet)
 
-    for parton in ["top","atop","bottom","abottom"]:
+    #partons currently missing from tree
+    for parton in ["jlr_top","jlr_atop","jlr_bottom","jlr_abottom"]:
         make_p4(df,parton,None)
         
-    make_m2(df,"top",None,"atop",None)
-    make_m2(df,"top",None,"bottom",None)
-    make_m2(df,"top",None,"abottom",None)
-    make_m2(df,"atop",None,"bottom",None)
-    make_m2(df,"atop",None,"abottom",None)
-    make_m2(df,"bottom",None,"abottom",None)
+    make_m2(df,"jlr_top",None,"jlr_atop",None)
+    make_m2(df,"jlr_top",None,"jlr_bottom",None)
+    make_m2(df,"jlr_top",None,"jlr_abottom",None)
+    make_m2(df,"jlr_atop",None,"jlr_bottom",None)
+    make_m2(df,"jlr_atop",None,"jlr_abottom",None)
+    make_m2(df,"jlr_bottom",None,"jlr_abottom",None)
     
     print("saving {0} to {1}".format(df.shape, args.output))
+    print(list(df.columns))
     df.to_hdf(args.output, key='df', format='t', mode='w')
