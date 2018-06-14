@@ -161,7 +161,10 @@ def flatten_tree(intree, outfile, outname, flatten_commands, scalar_commands):
             print("{0}/{1}".format(iev, intree.GetEntries()))
 
         total_bytes += outtree.Fill()
-    
+   
+    #0-based indexing
+    iev += 1
+
     t1 = time.time()
     dt = t1 - t0
     print("Filled {0} entries, {1:.2f} Hz, {2:.2f} MB".format(
