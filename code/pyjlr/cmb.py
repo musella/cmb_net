@@ -2,7 +2,7 @@ import numpy as np
 
 from keras.layers import Input, Dense, Add, Multiply
 from keras.layers import Reshape, UpSampling1D, Flatten, Concatenate, Cropping1D, Conv1D
-from keras.layers import Activation, LeakyReLU, PReLU, Lambda, Merge
+from keras.layers import Activation, LeakyReLU, PReLU, Lambda
 from keras.layers import BatchNormalization, Dropout, GaussianNoise
 from keras.models import Model, Sequential
 from keras.layers import SimpleRNN

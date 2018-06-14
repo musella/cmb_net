@@ -201,7 +201,10 @@ class FFWDRegression(BaseEstimator):
             save_best_only=kwargs.pop('save_best_only',self.save_best_only)
             kwargs['callbacks'] = self.get_callbacks(has_valid=has_valid,
                                                      save_best_only=save_best_only)
-            
+        
+        with open(self.monitor_dir+"/model.json", "w") as fi:
+            fi.write(model.to_json())
+
         return model.fit(X_train,y_train,**kwargs)
     
     # ----------------------------------------------------------------------------------------------
