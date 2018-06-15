@@ -8,13 +8,16 @@ import os
 import root_numpy
 
 def load_df(folder):
-    files = sorted(glob.glob(folder+'/*flat*.root'))
-    
+    if isinstance(folder, str) and os.path.isdir(folder):
+        files = sorted(glob.glob(folder+'/*flat*.root'))
+    elif isinstance(folder, list):
+        files = list(folder)
+
     #in case we are trying to load from T3, add prefix
     files = [fi.replace("/pnfs/psi.ch", "root://t3dcachedb.psi.ch/pnfs/psi.ch") for fi in files]
     for fi in files:
         print(fi)
-    df = pd.DataFrame(root_numpy.root2array(files))
+    df = pd.DataFrame(root_numpy.root2array(files, treename="tree"))
     df["JointLikelihoodRatioLog"] = np.log10(df["JointLikelihoodRatio"])
     return df
 
@@ -63,8 +66,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--input", type=str,
-        required=True, action="store",
-        help="input folder"
+        required=True, action="store", nargs='+',
+        help="input folder or list of files"
     )
     
     args = parser.parse_args()
