@@ -13,12 +13,12 @@ if __name__ == "__main__":
         nleps = 2,
         met_feats = ["phi","pt","sumEt","px","py"],
         truth_feats = ["pt","eta","phi","en","px","py","pz"],
-        evdesc_feats = ["num_leptons", "num_jets"],
+        evdesc_feats = ["nleps", "njets"],
     )
     
     # options for delphes files, full hadronic selection
     delphes_had = dict(
-        selection = 'num_leptons == 0',
+        selection = 'nleps == 0',
         met_feats = None,
     )
     
@@ -26,11 +26,11 @@ if __name__ == "__main__":
     delphes_1l = dict(
         selection = 'nleps == 1',
         nleps = 1,
-        met_feats = ["phi","sumEt","px","py"],
+        met_feats = ["phi","pt","px","py"],
     )
     delphes_2l = dict(
         selection = 'nleps > 1',
-        met_feats = ["phi","sumEt","px","py"],
+        met_feats = ["phi","pt","px","py"],
     )
 
     # options for cms files, 1l selection

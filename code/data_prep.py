@@ -8,13 +8,20 @@ import os
 import root_numpy
 
 def load_df(folder):
-    if isinstance(folder, str) and os.path.isdir(folder):
-        files = sorted(glob.glob(folder+'/*flat*.root'))
+    if len(folder) == 1 and os.path.isdir(folder[0]):
+        print("loading files from folder {0}".format(folder[0]))
+        files = sorted(glob.glob(folder[0] + '/*flat*.root'))
     elif isinstance(folder, list):
         files = list(folder)
 
     #in case we are trying to load from T3, add prefix
-    files = [fi.replace("/pnfs/psi.ch", "root://t3dcachedb.psi.ch/pnfs/psi.ch") for fi in files]
+    new_files = []
+    for fi in files:
+        if fi.startswith("/pnfs/psi.ch"):
+            fi = "root://t3dcachedb.psi.ch/" + fi
+        new_files += [fi]
+    files = new_files
+
     for fi in files:
         print(fi)
     df = pd.DataFrame(root_numpy.root2array(files, treename="tree"))
