@@ -9,4 +9,9 @@ tth:
 	rm -Rf ${OUTPATH}/numpy/cms_tth_0l
 	python code/format.py --infile ${OUTPATH}/tth.h5 --outdir ${OUTPATH}/numpy/cms_tth_0l --datatype cms_0l
 
-.PHONY: tth
+ttjets_sl:
+	python code/data_prep.py --input /pnfs/psi.ch/cms/trivcat/store/user/jpata/tth/flatten/GC898817b12ac5/TTToSemiLeptonic_TuneCP5_PSweights_13TeV-powheg-pythia8/ --output ${OUTPATH}/ttjets_sl.h5
+	rm -Rf ${OUTPATH}/numpy/cms_ttjets_1l
+	python code/format.py --infile ${OUTPATH}/ttjets_sl.h5 --outdir ${OUTPATH}/numpy/cms_ttjets_1l --datatype cms_1l
+
+.PHONY: tth ttjets_sl

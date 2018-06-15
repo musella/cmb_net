@@ -190,8 +190,8 @@ flattener.py --infile input.root --intree tree \
 """)
     parser.add_argument(
         "--infile", type=str,
-        required=True, action="store",
-        help="Input root file"
+        required=True, action="store", nargs='+',
+        help="Input root files"
     )
     parser.add_argument(
         "--intree", type=str,
@@ -221,16 +221,18 @@ flattener.py --infile input.root --intree tree \
     flatten_commands = []
 
     #parse the colon-separated flatten commands
-    for fl_cmd in args.flatten:
-        collection, sizekey, subvars, maxlen = fl_cmd.split(":")
-        maxlen = int(maxlen)
-        subvars = subvars.split(",")
-        cmd = [collection, sizekey, subvars, maxlen]
-        print("flatten branches", cmd)
-        flatten_commands.append(cmd)
+    if args.flatten:
+        for fl_cmd in args.flatten:
+            collection, sizekey, subvars, maxlen = fl_cmd.split(":")
+            maxlen = int(maxlen)
+            subvars = subvars.split(",")
+            cmd = [collection, sizekey, subvars, maxlen]
+            print("flatten branches", cmd)
+            flatten_commands.append(cmd)
     print("scalar branches", args.branch)
 
-    infile = ROOT.TFile(args.infile)
-    intree = infile.Get(args.intree)
+    intree = ROOT.TChain(args.intree)
+    for inf in args.infile:
+        intree.AddFile(inf)
 
     flatten_tree(intree, args.outfile, args.outtree, flatten_commands, args.branch)
