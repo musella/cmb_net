@@ -2,8 +2,8 @@
 
 See the `Makefile` for the sample generation. Roughly, it consists of the following steps:
 
-1. We create the CMS training samples using the usual tthbb13 workflow, i.e. with `MEAnalysis_heppy.py` in batch jobs.
-2. The outputs are flattened ntuples in /pnfs `ls /pnfs/psi.ch/cms/trivcat/store/user/jpata/tth/meanalysis/GCcb1d8c0cc835/ttHTobb_M125_TuneCP5_13TeV-powheg-pythia8/*flat*.root`.
+1. We create the CMS training samples using the usual [tthbb13](https://gitlab.cern.ch/Zurich_ttH/tthbb13) workflow, i.e. with `MEAnalysis_heppy.py` or `Delphes_Analysis_heppy.py` in batch jobs.
+2. The outputs are flattened ntuples in /pnfs, produced using the `flattener.py` script.
 2. The flat root ntuples are converted to a pandas dataframe in HDF5 using `code/data_prep.py`.
 3. The pandas dataframe is converted to numpy arrays using `code/format.py`.
 
