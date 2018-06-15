@@ -65,6 +65,11 @@ cmb_opts = [
     make_option("--dijet-dropout",type="string",action="store",dest="dijet_dropout",default=None),
     make_option("--dijet-noise",type="string",action="store",dest="dijet_noise",default=None),
     make_option("--dijet-activations",type="string",action="store",dest="dijet_activations",default="relu"),
+
+    make_option("--lep-layers",type="string",action="store",dest="lep_layers",default=[64,32,16]),
+    make_option("--lep-dropout",type="string",action="store",dest="lep_dropout",default=None),
+    make_option("--lep-noise",type="string",action="store",dest="lep_noise",default=None),
+    make_option("--lep-activations",type="string",action="store",dest="lep_activations",default="relu"),
     
     make_option("--trijet-layers",type="string",action="store",dest="trijet_layers",default=[128,64,32]),
     make_option("--trijet-dropout",type="string",action="store",dest="trijet_dropout",default=None),
@@ -73,6 +78,7 @@ cmb_opts = [
 
     make_option("--do-rnn",action="store",type="int",dest="do_rnn",default=False),
     make_option("--dijet-rnn-units",action="store",type="string",dest="dijet_rnn_units",default=None),
+    make_option("--lep-rnn-units",action="store",type="string",dest="lep_rnn_units",default=None),
     make_option("--trijet-rnn-units",action="store",type="string",dest="trijet_rnn_units",default=None),
     
     make_option("--do-attention",action="store_true",dest="do_attention",default=True),
@@ -82,6 +88,11 @@ cmb_opts = [
     make_option("--dijet-attention-dropout",type="string",action="store",dest="dijet_attention_dropout",default=None),
     make_option("--dijet-attention-noise",type="string",action="store",dest="dijet_attention_noise",default=None),
     make_option("--dijet-attention-activations",type="string",action="store",dest="dijet_attention_activations",default="relu"),
+
+    make_option("--lep-attention-layers",type="string",action="store",dest="lep_attention_layers",default=[8,4]),
+    make_option("--lep-attention-dropout",type="string",action="store",dest="lep_attention_dropout",default=None),
+    make_option("--lep-attention-noise",type="string",action="store",dest="lep_attention_noise",default=None),
+    make_option("--lep-attention-activations",type="string",action="store",dest="lep_attention_activations",default="relu"),
     
     make_option("--trijet-attention-layers",type="string",action="store",dest="trijet_attention_layers",default=[8,4]),
     make_option("--trijet-attention-dropout",type="string",action="store",dest="trijet_attention_dropout",default=None),
