@@ -112,6 +112,11 @@ class CMBRegression(BaseEstimator):
                  dijet_dropout=None,
                  dijet_activations="relu",
                  dijet_noise=None,
+
+                 lep_layers=[64,32,16],
+                 lep_dropout=None,
+                 lep_activations="relu",
+                 lep_noise=None,
                  
                  trijet_layers=[128,64,32],
                  trijet_dropout=None,
@@ -120,6 +125,7 @@ class CMBRegression(BaseEstimator):
 
                  do_rnn=False,
                  dijet_rnn_units=None,
+                 lep_rnn_units=None,
                  trijet_rnn_units=None,
                  
                  do_attention=True,
@@ -128,6 +134,11 @@ class CMBRegression(BaseEstimator):
                  dijet_attention_dropout=None,
                  dijet_attention_activations="relu",
                  dijet_attention_noise=None,
+                 
+                 lep_attention_layers=[8,4],
+                 lep_attention_dropout=None,
+                 lep_attention_activations="relu",
+                 lep_attention_noise=None,
                  
                  trijet_attention_layers=[8,4],
                  trijet_attention_dropout=None,
@@ -165,6 +176,11 @@ class CMBRegression(BaseEstimator):
         self.dijet_dropout = get_prop(dijet_dropout,len(self.dijet_layers),float)
         self.dijet_noise = get_prop(dijet_noise,len(self.dijet_layers),float)
 
+        self.lep_layers = get_list(lep_layers,int)
+        self.lep_activations = get_prop(lep_activations,len(self.lep_layers),str)
+        self.lep_dropout = get_prop(lep_dropout,len(self.lep_layers),float)
+        self.lep_noise = get_prop(lep_noise,len(self.lep_layers),float)
+
         self.trijet_layers = get_list(trijet_layers,int)
         self.trijet_activations = get_prop(trijet_activations,len(self.trijet_layers),str)
         self.trijet_dropout = get_prop(trijet_dropout,len(self.trijet_layers),float)
@@ -181,6 +197,11 @@ class CMBRegression(BaseEstimator):
         self.dijet_attention_activations = get_prop(dijet_attention_activations,len(self.dijet_attention_layers),str)
         self.dijet_attention_dropout = get_prop(dijet_attention_dropout,len(self.dijet_attention_layers),float)
         self.dijet_attention_noise = get_prop(dijet_attention_noise,len(self.dijet_attention_layers),float)
+
+        self.lep_attention_layers = get_list(lep_attention_layers,int)
+        self.lep_attention_activations = get_prop(lep_attention_activations,len(self.lep_attention_layers),str)
+        self.lep_attention_dropout = get_prop(lep_attention_dropout,len(self.lep_attention_layers),float)
+        self.lep_attention_noise = get_prop(lep_attention_noise,len(self.lep_attention_layers),float)
 
         self.trijet_attention_layers = get_list(trijet_attention_layers,int)
         self.trijet_attention_activations = get_prop(trijet_attention_activations,len(self.trijet_attention_layers),str)
@@ -230,18 +251,35 @@ class CMBRegression(BaseEstimator):
             
             ## input layers
             inputs = []
-            njet, nlep = None, None
+            njet, nlep = 0, 0
             if self.jets_shape is not None:
-                input_jet = Input(shape=self.jets_shape,name="%s_jet" % self.name)
+                input_jet = Input(shape=self.jets_shape,name="%s_jet_inp" % self.name)
                 inputs.append(input_jet)
                 njet = self.jets_shape[0]
                 if self.jets_dropout is not None:
                     input_jet = Dropout(self.jets_dropout,noise_shape=(None,1,self.jets_shape[1]),name="%s_jets_do" % self.name)(input_jet)
             if self.leps_shape is not None:
-                input_lep = Input(shape=self.leps_shape,name="%s_lep" % self.name)
+                input_lep = Input(shape=self.leps_shape,name="%s_lep_inp" % self.name)
                 inputs.append(input_lep)
                 nlep = self.leps_shape[0]
-
+            if self.met_shape is not None:
+                input_met = Input(shape=self.met_shape,name="%s_met_inp" % self.name)
+                inputs.append(input_met)
+                met = Reshape( (1,self.met_shape[0]), name="%s_met" % self.name)(input_met)
+                
+            ## make lepton-met-jets combinations
+            if self.leps_shape is not None: 
+                leps = Reshape( (1,self.leps_shape[0]*self.leps_shape[1]), name="%s_leps" % self.name)(input_lep)
+                if nlep == 2:
+                    leps = Lambda(lambda x: K.concatenate( [ K.concatenate( [x[0],x[1],x[2][:,ijet0:ijet0+1,:],x[:,ijet1:ijet1+1,:] ] ) 
+                                                                 for ijet0,ijet1 in itertools.combinations(reversed(range(njet)),2) ], axis=1),
+                                  name="%s_dilep_met_dijet" % self.name)([leps,met,input_jet])
+                else:
+                    leps = Lambda(lambda x: K.concatenate( [ K.concatenate( [x[0],x[1],x[2][:,ijet:ijet+1,:] ] ) 
+                                                                 for ijet in reversed(range(njet)) ], axis=1),
+                                  name="%s_lep_met_jet"  % self.name)([leps,met,input_jet])
+                nlepmetjet = int(leps.get_shape()[1])
+                
             ## make dijet and trijet combinations
             ## input
             ## [ jet0,
@@ -258,31 +296,43 @@ class CMBRegression(BaseEstimator):
             dijets = Lambda(lambda x: K.concatenate( [K.concatenate( [ x[:,ijet0:ijet0+1,:],x[:,ijet1:ijet1+1,:] ] ) 
                                                       for ijet0,ijet1 in itertools.combinations(reversed(range(njet)),2) ], axis=1),
                             name="%s_dijets" % (self.name) )(input_jet)
-            
-            trijets = Lambda(lambda x: K.concatenate( [K.concatenate( [ x[:,ijet0:ijet0+1,:],x[:,ijet1:ijet1+1,:],x[:,ijet2:ijet2+1,:] ] ) 
-                                                       for ijet0,ijet1,ijet2 in itertools.combinations(reversed(range(njet)),3)], axis=1),
-                             name="%s_trijets" % (self.name) )(input_jet)
-            
-            ## 1x1 convolutions for dijet and trijet
             ndijet = int(dijets.get_shape()[1])
-            ntrijet = int(trijets.get_shape()[1])
             
+            if nlep == 1:
+                trijets = Lambda(lambda x: K.concatenate( [K.concatenate( [ x[:,ijet0:ijet0+1,:],x[:,ijet1:ijet1+1,:],x[:,ijet2:ijet2+1,:] ] ) 
+                                                           for ijet0,ijet1,ijet2 in itertools.combinations(reversed(range(njet)),3)], axis=1),
+                                 name="%s_trijets" % (self.name) )(input_jet)
+                ntrijet = int(trijets.get_shape()[1])
+            else:
+                ntrijet = 0
+                
+            ## 1x1 convolutions for dijet and trijet
             dijets = get_block(dijets,self.name+"_dijets",do_bn0=True,batch_norm=True,
                                noise=self.dijet_noise,use_bias=True,dropout=self.dijet_dropout,
                                layers=self.dijet_layers,
                                activations=self.dijet_activations,
                                core=lambda x,**k: Conv1D(x,kernel_size=1,**k),core_name="conv1x1")
-
-            trijets = get_block(trijets,self.name+"_trijets",do_bn0=True,batch_norm=True,
-                                noise=self.trijet_noise,use_bias=True,dropout=self.trijet_dropout,
-                                layers=self.trijet_layers,
-                                activations=self.trijet_activations,
-                                core=lambda x,**k: Conv1D(x,kernel_size=1,**k),core_name="conv1x1")
-
+            if nlep > 0:
+                leps = get_block(leps,self.name+"_leps",do_bn0=True,batch_norm=True,
+                                   noise=self.lep_noise,use_bias=True,dropout=self.lep_dropout,
+                                   layers=self.lep_layers,
+                                   activations=self.lep_activations,
+                                   core=lambda x,**k: Conv1D(x,kernel_size=1,**k),core_name="conv1x1")
+                
+            if ntrijet > 0:
+                trijets = get_block(trijets,self.name+"_trijets",do_bn0=True,batch_norm=True,
+                                    noise=self.trijet_noise,use_bias=True,dropout=self.trijet_dropout,
+                                    layers=self.trijet_layers,
+                                    activations=self.trijet_activations,
+                                    core=lambda x,**k: Conv1D(x,kernel_size=1,**k),core_name="conv1x1")
+                
             ## recursive layers
             if self.do_rnn is not None and self.do_rnn > 0:
                 dijets = SimpleRNN(self.dijet_rnn_units[0],return_sequences=True,name="%s_dijets_rnn_prea" % self.name)(dijets)
-                trijets = SimpleRNN(self.trijet_rnn_units[0],return_sequences=True,name="%s_trijets_rnn_prea" % self.name)(trijets)
+                if nlep > 0:
+                    leps = SimpleRNN(self.lep_rnn_units[0],return_sequences=True,name="%s_leps_rnn_prea" % self.name)(leps)
+                if ntrijet > 0:
+                    trijets = SimpleRNN(self.trijet_rnn_units[0],return_sequences=True,name="%s_trijets_rnn_prea" % self.name)(trijets)
                 
             ## attention network
             ## first reduce dijet and trijet dimensionality 
@@ -292,15 +342,26 @@ class CMBRegression(BaseEstimator):
                                     layers=self.dijet_attention_layers,
                                     activations=self.dijet_attention_activations,
                                     core=lambda x,**k: Conv1D(x,kernel_size=1,**k),core_name="conv1x1")
+                att_inputs = [dijetsA]
                 
-                trijetsA = get_block(trijets,self.name+"_trijetsA",do_bn0=False,batch_norm=True,
-                                     noise=self.trijet_attention_noise,use_bias=True,dropout=self.trijet_attention_dropout,
-                                     layers=self.trijet_attention_layers,
-                                     activations=self.trijet_attention_activations,
-                                     core=lambda x,**k: Conv1D(x,kernel_size=1,**k),core_name="conv1x1")
+                if nlep > 0:
+                    lepsA = get_block(leps,self.name+"_lepsA",do_bn0=False,batch_norm=True,
+                                      noise=self.lep_attention_noise,use_bias=True,dropout=self.lep_attention_dropout,
+                                      layers=self.lep_attention_layers,
+                                      activations=self.lep_attention_activations,
+                                      core=lambda x,**k: Conv1D(x,kernel_size=1,**k),core_name="conv1x1")
+                    att_inputs.append(lepsA)
+                
+                if ntrijet > 0:
+                    trijetsA = get_block(trijets,self.name+"_trijetsA",do_bn0=False,batch_norm=True,
+                                         noise=self.trijet_attention_noise,use_bias=True,dropout=self.trijet_attention_dropout,
+                                         layers=self.trijet_attention_layers,
+                                         activations=self.trijet_attention_activations,
+                                         core=lambda x,**k: Conv1D(x,kernel_size=1,**k),core_name="conv1x1")
+                    att_inputs.append(trijetsA)
                 
                 ## then concatenate and add fc layers
-                att = Concatenate(axis=1,name="%s_A_inp"%self.name)([dijetsA,trijetsA])
+                att = Concatenate(axis=1,name="%s_A_inp"%self.name)(att_inputs)
                 att = Flatten(name="%s_A_flt"%self.name)(att)
                 att = get_block(att,self.name+"_A",do_bn0=False,batch_norm=True,
                                 noise=self.attention_noise,use_bias=True,dropout=self.attention_dropout,
@@ -310,25 +371,42 @@ class CMBRegression(BaseEstimator):
 
                 ## final attention softmax            
                 dijetsA = Dense(ndijet, activation="softmax",name="%s_dijetaA" % self.name)(att)
-                trijetsA = Dense(ntrijet, activation="softmax",name="%s_trijetaA" % self.name)(att)
                 dijetsA = Reshape((-1,1),name="%s_dijetaA_rshp" % self.name)(dijetsA)
-                trijetsA = Reshape((-1,1),name="%s_trijetaA_rshp" % self.name)(trijetsA)
-
-                ## multiply dijet and trijets by attention
+                ## multiply combinations by attention
                 dijets = Multiply(name="%s_dijets_prod"%self.name)([dijets,dijetsA])
-                trijets = Multiply(name="%s_trijets_prod"%self.name)([trijets,trijetsA])
+
+                if nlep > 0:
+                    lepsA = Dense(nlepmetjet, activation="softmax",name="%s_lepaA" % self.name)(att)
+                    lepsA = Reshape((-1,1),name="%s_lepaA_rshp" % self.name)(lepsA)
+                    ## multiply combinations by attention
+                    leps = Multiply(name="%s_leps_prod"%self.name)([leps,lepsA])
+                    
+                if ntrijet > 0:
+                    trijetsA = Dense(ntrijet, activation="softmax",name="%s_trijetaA" % self.name)(att)
+                    trijetsA = Reshape((-1,1),name="%s_trijetaA_rshp" % self.name)(trijetsA)
+                    ## multiply combinations by attention
+                    trijets = Multiply(name="%s_trijets_prod"%self.name)([trijets,trijetsA])
 
                 ## recursive layers
                 if self.do_rnn is not None and self.do_rnn > 1:
-                    dijets = SimpleRNN(self.dijet_rnn_units[1],return_sequences=True,name="%s_dijets_posta" % self.name)(dijets)
-                    trijets = SimpleRNN(self.trijet_rnn_units[1],return_sequences=True,name="%s_trijets_posta" % self.name)(trijets)
+                    dijets = SimpleRNN(self.dijet_rnn_units[1],return_sequences=False,name="%s_dijets_posta" % self.name)(dijets)
+                    if nlep > 0:
+                        leps = SimpleRNN(self.lep_rnn_units[1],return_sequences=False,name="%s_leps_posta" % self.name)(leps)
+                    if ntrijet > 0:
+                        trijets = SimpleRNN(self.trijet_rnn_units[1],return_sequences=False,name="%s_trijets_posta" % self.name)(trijets)
             
             ## flatten combinations
             dijets = Flatten(name="%s_dijets_flt"%self.name)(dijets)
-            trijets = Flatten(name="%s_trijets_flt"%self.name)(trijets)
+            fc_inputs = [dijets]
+            if nlep > 0:
+                leps = Flatten(name="%s_leps_flt"%self.name)(leps)
+                fc_inputs.append(leps)
+            if ntrijet > 0:
+                trijets = Flatten(name="%s_trijets_flt"%self.name)(trijets)
+                fc_inputs.append(trijets)
                         
             ## final fc layers
-            fc = Concatenate(axis=1,name="%s_fc_inp"%self.name)([dijets,trijets])
+            fc = Concatenate(axis=1,name="%s_fc_inp"%self.name)(fc_inputs)
             fc = get_block(fc,self.name+"_fc",do_bn0=False,batch_norm=True,
                                 noise=self.fc_noise,use_bias=True,dropout=self.fc_dropout,
                                 layers=self.fc_layers,
