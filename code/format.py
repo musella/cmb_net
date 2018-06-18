@@ -4,14 +4,76 @@ import os
 import pandas as pd
 import numpy as np
 
-if __name__ == "__main__":
-    
+if __name__ == "__main__":  
     scratch = os.environ.get("SCRATCH","/scratch/{0}".format(os.environ["USER"]))
+ 
+    # default options
+    opts = dict(
+        jet_feats = ["pt","eta","phi","en","px","py","pz","btag"],
+        njets = 10,
+        lep_feats = ["pt","eta","phi","en","px","py","pz"],
+        nleps = 2,
+        met_feats = ["phi","pt","sumEt","px","py"],
+        truth_feats = ["pt","eta","phi","en","px","py","pz"],
+        evdesc_feats = ["nleps", "njets"],
+    )
+    
+    # options for delphes files, full hadronic selection
+    delphes_had = dict(
+        selection = 'nleps == 0',
+        met_feats = None,
+    )
+    
+    # options for delphes files, 1l selection
+    delphes_1l = dict(
+        selection = 'nleps == 1',
+        nleps = 1,
+        met_feats = ["phi","pt","px","py"],
+    )
+    delphes_2l = dict(
+        selection = 'nleps > 1',
+        met_feats = ["phi","pt","px","py"],
+    )
+
+    # options for cms files, 1l selection
+    cms_1l = dict(
+        selection = 'nleps == 1',
+        nleps = 1,
+        met_feats = ["phi","pt","sumEt","px","py"],
+        jet_feats = ["pt","eta","phi","en","px","py","pz","btagDeepCSV"],
+        evdesc_feats = ["nleps", "njets", "nBDeepCSVM", "nMatch_wq", "nMatch_tb", "nMatch_hb"],
+    )
+    
+    cms_2l = dict(
+        selection = 'nleps > 1',
+        nleps = 2,
+        met_feats = ["phi","pt","sumEt","px","py"],
+        jet_feats = ["pt","eta","phi","en","px","py","pz","btagDeepCSV"],
+        evdesc_feats = ["nleps", "njets", "nBDeepCSVM", "nMatch_wq", "nMatch_tb", "nMatch_hb"],
+    )
+    
+    cms_0l = dict(
+        selection = 'nleps == 0',
+        nleps = 0,
+        met_feats = ["phi","pt","sumEt","px","py"],
+        jet_feats = ["pt","eta","phi","en","px","py","pz","btagDeepCSV"],
+        evdesc_feats = ["nleps", "njets", "nBDeepCSVM", "nMatch_wq", "nMatch_tb", "nMatch_hb"],
+    )
+
+    datatype_choices = {
+        "cms_0l": cms_0l,
+        "cms_1l": cms_1l,
+        "cms_2l": cms_2l,
+        "delphes_1l": delphes_1l,
+        "delphes_2l": delphes_2l,
+        "delphes_had": delphes_had
+    }
+
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--outdir", type=str,
-        default=scratch+"/jlr", action="store",
+        default=scratch+"/jlr/".format(os.environ["USER"]), action="store",
         help="output directory"
     )
     parser.add_argument(
@@ -21,100 +83,23 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--datatype", type=str,
-        choices=["cms_tth_had", "cms_tth_1l", "cms_tth_2l", "cms_ttjets_1l", "delphes_tth_had", "delphes_tth_1l", "delphes_tth_2l"], action="store",
+        choices=datatype_choices.keys(),
         required=True,
         help="datatype choice"
     )
     
     args = parser.parse_args()
-    
-    # default options
-    opts = dict(
-        jet_feats = ["pt","eta","phi","en","px","py","pz","btag"],
-        njets = 10,
-        lep_feats = ["pt","eta","phi","en","px","py","pz"],
-        nleps = 2,
-        met_feats = ["phi","pt","sumEt","px","py"],
-        truth_feats = ["pt","eta","phi","en","px","py","pz"],
-    )
-    
-    # options for delphes files, full hadronic selection
-    delphes_tth_had = dict(
-        inpfile = args.infile,
-        outdir = args.outdir + '/delphes_tth_had',
-        selection = 'num_leptons == 0',
-        met_feats = None,
-    )
-    
-    # options for cms files, full hadronic selection
-    cms_tth_had = dict(
-        inpfile = args.infile,
-        outdir = args.outdir + '/cms_tth_had',
-        selection = 'num_leptons == 0',
-        met_feats = None,
-        jet_feats = ["pt","eta","phi","en","px","py","pz","btagDeepCSV"],
-    )
-    
-    # options for delphes files, 1l selection
-    delphes_tth_1l = dict(
-        inpfile = args.infile,
-        outdir = args.outdir + '/delphes_tth_1l',
-        selection = 'num_leptons == 1',
-        nleps = 1,
-        met_feats = ["phi","sumEt","px","py"],
-    )
-    
-    # options for cms files, 1l selection
-    cms_tth_1l = dict(
-        inpfile = args.infile,
-        outdir = args.outdir + '/cms_tth_1l',
-        selection = 'num_leptons == 1',
-        jet_feats = ["pt","eta","phi","en","px","py","pz","btagDeepCSV"],
-        nleps = 1
-    )
-    
-    # options for cms files, 1l selection
-    cms_ttjets_1l = dict(
-        inpfile = args.infile,
-        outdir = args.outdir + '/cms_ttjets_1l',
-        selection = 'num_leptons == 1',
-        jet_feats = ["pt","eta","phi","en","px","py","pz","btagDeepCSV"],
-        nleps = 1
-    )
-    
-    
-    # options for delphes files, 2l selection
-    delphes_tth_2l = dict(
-        inpfile = args.infile,
-        outdir = args.outdir + '/delphes_tth_2l',
-        selection = 'num_leptons > 1',
-        met_feats = ["phi","sumEt","px","py"],
-    )
-    
-    # options for cms files, 2l selection
-    cms_tth_2l = dict(
-        inpfile = args.infile,
-        outdir = args.outdir + '/cms_tth_2l',
-        selection = 'num_leptons > 1',
-        jet_feats = ["pt","eta","phi","en","px","py","pz","btagDeepCSV"],
-    )
-   
-    datatype_choices = {
-        "cms_tth_had": cms_tth_had,
-        "cms_tth_1l": cms_tth_1l,
-        "cms_tth_2l": cms_tth_2l,
-        "cms_ttjets_1l": cms_ttjets_1l,
-    }
+
     choose = datatype_choices[args.datatype]
     
-    # copy specfic options
+    # copy specific options
     opts.update(choose)
     
     # copy default values to globals
     globals().update(opts)
     
-    print("loading hdf file {0}".format(inpfile))
-    df = pd.read_hdf(inpfile)
+    print("loading hdf file {0}".format(args.infile))
+    df = pd.read_hdf(args.infile)
     print("df.shape={0}".format(df.shape))
 
     if selection is not None:
@@ -127,8 +112,8 @@ if __name__ == "__main__":
     trutha = None
     kina = None
 
-    if not os.path.exists(outdir):
-        os.makedirs(outdir)
+    if not os.path.exists(args.outdir):
+        os.makedirs(args.outdir)
     
     # make dijet higgs candidate combination
     def hcand(X):    
@@ -165,21 +150,21 @@ if __name__ == "__main__":
         jetsa = df[jet_feat_cols].values
         flats.append(jetsa)
         jetsa = jetsa.reshape(-1,njets,njf)
-        np.save(outdir+"/jets",jetsa)
-        print('done')
+        np.save(args.outdir+"/jets",jetsa)
+        print('done',jetsa.shape)
         
     # --------------------------------------------------------------------------------------------------------------
     # leptons
-    if lep_feats is not None:
+    if lep_feats is not None and nleps>0:
         print('formatting leptons...')
         nlf = len(lep_feats)
         for ilep in range(nleps):
-            make_p4(df,'leptons',ilep)
-        lepsa = df[ ["leptons_%s_%d" % (feat,lep) for feat in lep_feats for lep in range(nleps)  ]  ].values
+            make_p4(df,'leps',ilep)
+        lepsa = df[ ["leps_%s_%d" % (feat,lep) for feat in lep_feats for lep in range(nleps)  ]  ].values
         flats.append(lepsa)
         lepsa = lepsa.reshape(-1,nleps,nlf) 
-        np.save(outdir+"/leps",lepsa)
-        print('done')
+        np.save(args.outdir+"/leps",lepsa)
+        print('done',lepsa.shape)
     
     # --------------------------------------------------------------------------------------------------------------
     # met
@@ -189,15 +174,15 @@ if __name__ == "__main__":
         df["met_py"] = df["met_"+met_feats[1]]*np.sin(df["met_"+met_feats[0]])
         meta = df[ ["met_%s" % feat for feat in met_feats  ]  ].values 
         flats.append(meta)
-        np.save(outdir+"/met",meta)
-        print('done')
+        np.save(args.outdir+"/met",meta)
+        print('done',meta.shape)
     
     # --------------------------------------------------------------------------------------------------------------
     # flat array with all above
     print('making flat (nokin) features...')
     flata = np.hstack(flats)
-    np.save(outdir+"/flat_nokin",flata)
-    print('done')
+    np.save(args.outdir+"/flat_nokin",flata)
+    print('done',flata.shape)
     
     # --------------------------------------------------------------------------------------------------------------
     # jet combinations: higgs candidates and top kin fit solutions
@@ -215,40 +200,48 @@ if __name__ == "__main__":
     
         flats.append(hcanda.reshape(hcanda.shape[0],-1))
         flats.append(kina.reshape(kina.shape[0],-1))
-        np.save(outdir+"/hcand",hcanda)
-        np.save(outdir+"/kinsols",kina)
-        print('done')    
+        np.save(args.outdir+"/hcand",hcanda)
+        np.save(args.outdir+"/kinsols",kina)
+        print('done',hcanda.shape,kina.shape)    
         
     # --------------------------------------------------------------------------------------------------------------
     # flat arrat with all above
     print('making flat features...')
     flata = np.hstack(flats)
-    np.save(outdir+"/flat",flata)
-    print('done')
+    np.save(args.outdir+"/flat",flata)
+    print('done',flata.shape)
     
     # --------------------------------------------------------------------------------------------------------------
     # target
     print('making target...')
-    jlra = df["JLR"].values
-    np.save(outdir+"/target",jlra)
-    print('done')
+    jlra = df["JointLikelihoodRatioLog"].values
+    np.save(args.outdir+"/target",jlra)
+    print('done',jlra.shape)
     
     
     # --------------------------------------------------------------------------------------------------------------
     # MEM
     print('making MEM...')
-    jlra = df[["mem_tth", "mem_ttbb", "mem_ratio"]].values
-    np.save(outdir+"/mem",jlra)
-    print('done')
+    arr = df[["mem_tth_SL_2w2h2t_p", "mem_ttbb_SL_2w2h2t_p"]].values
+    np.save(args.outdir+"/mem",arr)
+    print('done', arr.shape)
+    
+    # --------------------------------------------------------------------------------------------------------------
+    # Event description features
+    print('making evdesc...')
+    arr = df[evdesc_feats].values
+    np.save(args.outdir+"/evdesc",arr)
+    print('done', arr.shape)
     
     # --------------------------------------------------------------------------------------------------------------
     # truth level info
     if truth_feats is not None:
         print('formatting truth...')
         ntf = len(truth_feats)
-        for parton in ["top","atop","bottom","abottom"]:
-            make_p4(df,parton,None)
-        trutha = df[ ["%s_%s" % (part,feat) for feat in truth_feats for part in ["top","atop","bottom","abottom"]  ]  ].values 
+        partons = ["jlr_top","jlr_atop","jlr_bottom","jlr_abottom"]
+        for parton in partons:
+            make_p4(df,parton,None)        
+        trutha = df[ ["%s_%s" % (part,feat) for feat in truth_feats for part in partons  ]  ].values 
         trutha = trutha.reshape(-1,4,ntf)
-        np.save(outdir+"/truth",trutha)    
+        np.save(args.outdir+"/truth",trutha)    
         print('done')

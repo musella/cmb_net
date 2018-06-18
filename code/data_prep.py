@@ -5,6 +5,7 @@ import numpy as np
 import argparse
 import ROOT
 import os
+import root_numpy
 
 from pyjlr.utils import *
 
@@ -12,18 +13,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--output", type=str,
-        default="jlr_data.npz", action="store",
+        default="data.h5", action="store",
         help="output file"
     )
     parser.add_argument(
         "--input", type=str,
-        required=True, action="store",
-        help="input folder"
-    )
-    parser.add_argument(
-        "--maxfiles", type=int,
-        default=-1, action="store",
-        help="max files to process"
+        required=True, action="store", nargs='+',
+        help="input folder or list of files"
     )
     parser.add_argument(
         "--make-p4",dest="make_p4",
@@ -38,34 +34,27 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
 
-    df = load_df(args.input, args.maxfiles)
-    if os.path.isdir(args.input + "/mem"):
-        df_mem = load_mem_df(args.input, args.maxfiles)
-        assert(df.shape[0] == df_mem.shape[0])
-        df = pd.concat([df, df_mem], axis=1)
-    else:
-        print("could not find the {0}/mem directory, setting to 0".format(args.input))
-        df["mem_ratio"] = 0.0
-        df["mem_ttbb"] = 0.0
-        df["mem_tth"] = 0.0
+    df = load_df(args.input)
     print(df.columns)
 
     if args.make_p4:
         for ilep in range(2):
-            make_p4(df,'leptons',ilep)
-            
+            make_p4(df,'leps',ilep)
+
         for ijet in range(10):
             make_p4(df,'jets',ijet)
-            
-        for parton in ["top","atop","bottom","abottom"]:
+
+        #partons currently missing from tree
+        for parton in ["jlr_top","jlr_atop","jlr_bottom","jlr_abottom"]:
             make_p4(df,parton,None)
         
-        make_m2(df,"top",None,"atop",None)
-        make_m2(df,"top",None,"bottom",None)
-        make_m2(df,"top",None,"abottom",None)
-        make_m2(df,"atop",None,"bottom",None)
-        make_m2(df,"atop",None,"abottom",None)
-        make_m2(df,"bottom",None,"abottom",None)
+        make_m2(df,"jlr_top",None,"jlr_atop",None)
+        make_m2(df,"jlr_top",None,"jlr_bottom",None)
+        make_m2(df,"jlr_top",None,"jlr_abottom",None)
+        make_m2(df,"jlr_atop",None,"jlr_bottom",None)
+        make_m2(df,"jlr_atop",None,"jlr_abottom",None)
+        make_m2(df,"jlr_bottom",None,"jlr_abottom",None)
     
     print("saving {0} to {1}".format(df.shape, args.output))
+    print(list(df.columns))
     df.to_hdf(args.output, key='df', format='t', mode='w')

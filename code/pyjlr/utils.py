@@ -9,13 +9,35 @@ except:
     tqdm = None
 
 # -------------------------------------------------------------------------------------------
-def load_df(folder, maxfiles):
-    files = sorted(glob.glob(folder+'/*.csv'))[:maxfiles]
-    print("loading {0} files from {1}".format(len(files),folder) )
-    if tqdm is not None:
-        files = tqdm(files)
-    df = pd.concat([pd.read_csv(x,sep=" ",index_col=False) for x in files]).reset_index()
+## def load_df(folder, maxfiles):
+##     files = sorted(glob.glob(folder+'/*.csv'))[:maxfiles]
+##     print("loading {0} files from {1}".format(len(files),folder) )
+##     if tqdm is not None:
+##         files = tqdm(files)
+##     df = pd.concat([pd.read_csv(x,sep=" ",index_col=False) for x in files]).reset_index()
+##     return df
+
+def load_df(folder):
+    if len(folder) == 1 and os.path.isdir(folder[0]):
+        print("loading files from folder {0}".format(folder[0]))
+        files = sorted(glob.glob(folder[0] + '/*flat*.root'))
+    elif isinstance(folder, list):
+        files = list(folder)
+
+    #in case we are trying to load from T3, add prefix
+    new_files = []
+    for fi in files:
+        if fi.startswith("/pnfs/psi.ch"):
+            fi = "root://t3dcachedb.psi.ch/" + fi
+        new_files += [fi]
+    files = new_files
+
+    for fi in files:
+        print(fi)
+    df = pd.DataFrame(root_numpy.root2array(files, treename="tree"))
+    df["JointLikelihoodRatioLog"] = np.log10(df["JointLikelihoodRatio"])
     return df
+
 
 # -------------------------------------------------------------------------------------------
 def load_mem_df(folder, maxfiles):

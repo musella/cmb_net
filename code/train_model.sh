@@ -16,7 +16,7 @@ export CRAY_CUDA_MPS=1
 
 source /users/musella/env.sh
 
-cd /users/musella/jupyter/jlr
+#cd /users/musella/jupyter/jlr
 
 srun $@
 
