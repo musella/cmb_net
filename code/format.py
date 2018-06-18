@@ -5,10 +5,13 @@ import pandas as pd
 import numpy as np
 
 if __name__ == "__main__":
+    
+    scratch = os.environ.get("SCRATCH","/scratch/{0}".format(os.environ["USER"]))
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--outdir", type=str,
-        default="/scratch/{0}/jlr/".format(os.environ["USER"]), action="store",
+        default=scratch+"/jlr", action="store",
         help="output directory"
     )
     parser.add_argument(
@@ -25,7 +28,7 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-# default options
+    # default options
     opts = dict(
         jet_feats = ["pt","eta","phi","en","px","py","pz","btag"],
         njets = 10,
@@ -37,7 +40,7 @@ if __name__ == "__main__":
     
     # options for delphes files, full hadronic selection
     delphes_tth_had = dict(
-        inpfile = '/scratch/snx3000/musella/delphes_tth.hd5',
+        inpfile = args.infile,
         outdir = args.outdir + '/delphes_tth_had',
         selection = 'num_leptons == 0',
         met_feats = None,
@@ -124,7 +127,8 @@ if __name__ == "__main__":
     trutha = None
     kina = None
 
-    os.makedirs(outdir)
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
     
     # make dijet higgs candidate combination
     def hcand(X):    
@@ -242,6 +246,8 @@ if __name__ == "__main__":
     if truth_feats is not None:
         print('formatting truth...')
         ntf = len(truth_feats)
+        for parton in ["top","atop","bottom","abottom"]:
+            make_p4(df,parton,None)
         trutha = df[ ["%s_%s" % (part,feat) for feat in truth_feats for part in ["top","atop","bottom","abottom"]  ]  ].values 
         trutha = trutha.reshape(-1,4,ntf)
         np.save(outdir+"/truth",trutha)    
