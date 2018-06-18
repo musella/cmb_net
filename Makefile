@@ -34,8 +34,15 @@ ttjets_fh:
 ttbb_delphes:
 	mkdir -p ${OUTPATH}
 	rm -Rf ${OUTPATH}/ttbb_delphes_*.h5
-	ls  /pnfs/psi.ch/cms/trivcat/store/user/jpata/tth/delphes/GC48647908c2c2/Delphes_ttbb_inclusive/*.root | parallel --gnu -n10 -j5 python code/data_prep.py --input {} --output ${OUTPATH}/ttbb_delphes_{#}.h5
+	ls  /pnfs/psi.ch/cms/trivcat/store/user/jpata/tth/delphes/GC48647908c2c2/Delphes_ttbb_inclusive/*.root | parallel --gnu -n35 -j5 python code/data_prep.py --input {} --output ${OUTPATH}/ttbb_delphes_{#}.h5
 	rm -Rf ${OUTPATH}/numpy/delphes_ttbb_1l
 	\ls -1 ${OUTPATH}/ttbb_delphes_*.h5 | parallel --gnu -n1 -j5 python code/format.py --infile {} --outdir ${OUTPATH}/numpy/delphes_ttbb_1l/{#} --datatype delphes_1l
+
+tth_delphes:
+	mkdir -p ${OUTPATH}
+	rm -Rf ${OUTPATH}/tth_delphes_*.h5
+	ls  /pnfs/psi.ch/cms/trivcat/store/user/jpata/tth/delphes/GC48647908c2c2/Delphes_ttH/*.root | parallel --gnu -n70 -j5 python code/data_prep.py --input {} --output ${OUTPATH}/tth_delphes_{#}.h5
+	rm -Rf ${OUTPATH}/numpy/delphes_tth_1l
+	\ls -1 ${OUTPATH}/tth_delphes_*.h5 | parallel --gnu -n1 -j5 python code/format.py --infile {} --outdir ${OUTPATH}/numpy/delphes_tth_1l/{#} --datatype delphes_1l
 
 .PHONY: tth ttjets_sl

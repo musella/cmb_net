@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import root_numpy as rnp
 
 import glob
 
@@ -34,7 +35,7 @@ def load_df(folder):
 
     for fi in files:
         print(fi)
-    df = pd.DataFrame(root_numpy.root2array(files, treename="tree"))
+    df = pd.DataFrame(rnp.root2array(files, treename="tree"))
     df["JointLikelihoodRatioLog"] = np.log10(df["JointLikelihoodRatio"])
     return df
 
